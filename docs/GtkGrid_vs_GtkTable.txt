@@ -1,0 +1,32 @@
+How to support both GtkGrid and GtkTable
+========================================
+                                 col   row   cwidth rheight
+gtk_grid_attach  (grid, child,   left, top,   width, height)
+
+                                 col  colEnd  row    rowEnd
+gtk_table_attach (table, child,  left, right, top,   bottom)
+              _defaults
+========
+GtkTable
+========
+
+cwidth  = right  - left (colEnd - col)
+rheight = bottom - top  (rowEnd - row)
+
+// gtk2
+#define gtkcompat_grid_attach gtk_table_attach_defaults
+
+// gtk3 - using GtkTable format, translate to to GtkGrid
+#define gtkcompat_grid_attach(table,child,left,right,top,bottom) \
+    gtk_grid_attach((table),(child), (left), (top), (right)-(left), (bottom)-(top))
+
+=======
+GtkGrid
+=======
+
+colEnd = left + cwidth
+rowEnd = top  + rheight
+
+// gtk2
+#define gtk_grid_attach(grid,child,left,top,width,height) \
+    gtk_table_attach_defaults((grid),(child), (left), (left)+(width), (top), (top)+(height))

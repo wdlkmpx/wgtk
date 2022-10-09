@@ -1,0 +1,148 @@
+gtk2 font -> gtk3
+https://github.com/abrt/libreport/pull/493/files
+
+https://git.tartarus.org/?p=simon/putty.git;a=commitdiff;h=8833634f4756ea0936d6f191d1b0643529ee03db;hp=64221972c0de91d01e73ce90d3fa47acf4808bfa
+
+=================
+GtkScrolledWindow
+=================
+don't use gtk_scrolled_window_add_with_viewport() with a GtkTreeView
+    use gtk_container_add() instead
+
+
+================
+"destroy" signal
+================
+is triggered by gtk_widget_destroy
+
+Gtk3: GtkWidget
+Gtk2: GtkObject
+
+both follow the same callback (GtkWidget *w, gpointer user_data)
+
+Classes, custom widgets:
+- It's possible to change GtkObjectClass destroy to GOjbectClass dispose
+  but the widget must be "manually" destroyed with gtk_widget_destroy.
+
+
+=========
+GdkWindow (surface)
+=========
+GdkWindow * gdkwin;
+gdkwin = gtk_widget_get_window (widget)
+
+gdkwin != NULL only after the widget has been displayed in the screen
+
+
+=============
+gdk_draw_line
+=============
+
+cairo_t * cr = ....;
+cairo_set_line_width (cr, 1.0);
+cairo_set_line_cap (cr, CAIRO_LINE_CAP_SQUARE);
+
+void gdk_draw_line (GdkDrawable *d, -> cr
+                    GdkGC *gc,      -> cairo_set_source_rgb (cr, r, g, b);
+                    gint x1_,       -
+                    gint y1_,       -> cairo_move_to (cr, x1_, y1_);
+                    gint x2_,       -
+                    gint y2_);      -> cairo_line_to (cr, x2_, y2_);
+
+cairo_stroke (cr);
+cairo_destroy (cr);
+
+gdk_draw_lines
+==============
+
+struct GdkPoint {
+  gint x;
+  gint y;
+};
+
+
+====================
+cairo_draw_rectangle (*) filled = FALSE
+====================
+
+cairo_t * cr = ....;
+* filled == FALSE
+     cairo_set_line_width (cr, 1.0);
+     cairo_set_line_cap (cr, CAIRO_LINE_CAP_SQUARE);
+
+void
+gdk_draw_rectangle (GdkDrawable *d, -> cr
+                    GdkGC *gc,      -> cairo_set_source_rgb (cr, r, g, b);
+                 *  gboolean filled,
+                    gint x,         -
+                    gint y,         -
+                    gint width,     -
+                    gint height);   -> cairo_rectangle (x, y, width, height);
+
+* filled == FALSE
+     cairo_stroke (cr);
+* filled == TRUE
+     cairo_fill (cr);
+
+
+=================
+gdk_draw_drawable / _pixmap
+=================
+
+cairo_t * cr = ....;
+
+void gdk_draw_drawable (GdkDrawable *drawable,
+                        GdkGC *gc,
+                        GdkDrawable *src,
+                        gint xsrc,
+                        gint ysrc,
+                        gint xdest,
+                        gint ydest,
+                        gint width,
+                        gint height);
+
+xsrc, ysrc = 0
+width  = source width
+height = source height
+   //gdk_cairo_set_source_pixbuf (cr, pixbuf, xdest, ydest);
+   cairo_set_source_surface (cr, surface, xdest, ydest);
+   cairo_paint (cr);
+
+xsrc, ysrc = 0
+   //gdk_cairo_set_source_pixbuf (cr, pixbuf, xdest, ydest);
+   cairo_set_source_surface (cr, surface, xdest, ydest);
+   cairo_rectangle (cr, xdest, ydest, width, height);
+   cairo_fill (cr);
+
+xsrc, ysrc != 0 (*cairo_set_source_* above does not apply)
+   cairo_save (cr);
+   cairo_translate (cr, xdest, ydest);
+   //gdk_cairo_set_source_pixbuf (cr, pixbuf, -xsrc, -ysrc);
+   cairo_set_source_surface (cr, surface, -xsrc, -ysrc);
+   cairo_rectangle (cr, 0, 0, width, height);
+   cairo_fill (cr);
+   cairo_restore (cr);
+
+cairo_destroy (cr);
+
+
+===============
+cairo_surface_t
+===============
+using many image source surfaces has a performance hit
+https://stackoverflow.com/questions/15773965/how-to-fast-redrawing-an-image-buffer
+
+
+   gtk_label_set_markup(GTK_LABEL(label),
+                        _("<span size='xx-large' weight='bold'>xemeraldia</span>"));
+
+
+
+GtkTreeView
+===========
+don't use gtk_scrolled_window_add_with_viewport() with a GtkTreeView
+
+gtk_scrolled_window_add_with_viewport (GTK_SCROLLED_WINDOW (scroll),
+                                       GTK_WIDGET(btree));
+
+---> gtk_container_add (GTK_CONTAINER (scroll), GTK_WIDGET (btree));

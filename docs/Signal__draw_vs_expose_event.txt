@@ -1,0 +1,21 @@
+GTKCOMPAT_DRAW_SIGNAL (gtk3="draw", gtk2="expose_event")
+---------------------
+
+g_signal_connect (w, GTKCOMPAT_DRAW_SIGNAL, G_CALLBACK (w_draw_cb), NULL);
+
+
+gboolean w_draw_cb (GtkWidget *w, gpointer compat, gpointer user_data)
+{
+#if GTK_CHECK_VERSION (3, 0, 0)
+    cairo_t * cr = (cairo_t *) compat;
+#else // gtk2
+    //GdkEventExpose * event = (GdkEventExpose *) compat;
+    cairo_t * cr = gdk_cairo_create (gtk_widget_get_window (w));
+#endif
+    // process data
+    // here
+#if GTK_MAJOR_VERSION == 2
+    cairo_destroy (cr);
+#endif
+    //return TRUE;
+}
