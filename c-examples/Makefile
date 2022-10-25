@@ -1,9 +1,10 @@
 include ../config.mk
 
 APPS  = w_gtk_combo_example w_gtk_menu_example w_gtk_menu_example2
-WGTK = ../0libwgtk
 
-WOBJ = $(WGTK)/w_gtk.o
+WGTK = ../0libwgtk
+WGTK_CFLAGS = -I../0libwgtk
+WGTK_LIBS   = -L../0libwgtk -lwgtk
 
 ifndef GTK_CFLAGS
 $(error GTK_CFLAGS is not defined)
@@ -11,8 +12,8 @@ endif
 
 LDFLAGS += 
 #CPPFLAGS += -I..
-CFLAGS += -I.. -I$(WGTK) $(GTK_CFLAGS)
-LIBS   += $(GTK_LIBS)
+CFLAGS += -I.. $(GTK_CFLAGS) $(WGTK_CFLAGS)
+LIBS   += $(GTK_LIBS) $(WGTK_LIBS)
 
 all: $(APPS)
 
@@ -31,7 +32,8 @@ strip: all
 distclean: clean
 
 clean:
-	rm -f *.o *~ $(APPS) $(WGTK)/*.o
+	rm -f *.o *~ $(APPS)
+#	make -C $(WGTK) clean
 
 install:
 

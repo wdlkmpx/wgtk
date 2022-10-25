@@ -54,6 +54,59 @@ ${target}
 #===========================================================================
 
 #===========================================================================
+# >>> GtkFontChooser
+gtk_font_chooser () {
+
+sed -i \
+-e 's%gtk_font_selection_new%gtk_font_chooser_widget_new%g' \
+-e 's%gtk_font_selection_dialog_new%/**ADD NULL param (parent window)**/gtk_font_chooser_dialog_new%g' \
+-e 's%gtk_font_selection_set_preview_text (GTK_FONT_SELECTION%gtk_font_chooser_set_preview_text (GTK_FONT_CHOOSER%g' \
+-e 's%gtk_font_selection_set_preview_text(GTK_FONT_SELECTION%gtk_font_chooser_set_preview_text (GTK_FONT_CHOOSER%g' \
+-e 's%gtk_font_selection_set_preview_text%gtk_font_chooser_set_preview_text%g' \
+-e 's%gtk_font_selection_get_preview_text (GTK_FONT_SELECTION%/**RETVAL MUST BE FREED**/gtk_font_chooser_get_preview_text (GTK_FONT_CHOOSER%g' \
+-e 's%gtk_font_selection_get_preview_text(GTK_FONT_SELECTION%/**RETVAL MUST BE FREED**/gtk_font_chooser_get_preview_text (GTK_FONT_CHOOSER%g' \
+-e 's%gtk_font_selection_get_preview_text%/**RETVAL MUST BE FREED**/gtk_font_chooser_get_preview_text%g' \
+-e 's%gtk_font_selection_get_face (GTK_FONT_SELECTION%gtk_font_chooser_get_font_face (GTK_FONT_CHOOSER%g' \
+-e 's%gtk_font_selection_get_face(GTK_FONT_SELECTION%gtk_font_chooser_get_font_face (GTK_FONT_CHOOSER%g' \
+-e 's%gtk_font_selection_get_face (%gtk_font_chooser_get_font_face (%g' \
+-e 's%gtk_font_selection_get_face(%gtk_font_chooser_get_font_face (%g' \
+-e 's%gtk_font_selection_get_family (GTK_FONT_SELECTION%gtk_font_chooser_get_font_family (GTK_FONT_CHOOSER%g' \
+-e 's%gtk_font_selection_get_family(GTK_FONT_SELECTION%gtk_font_chooser_get_font_family (GTK_FONT_CHOOSER%g' \
+-e 's%gtk_font_selection_get_family (%gtk_font_chooser_get_font_family (%g' \
+-e 's%gtk_font_selection_get_family(%gtk_font_chooser_get_font_family (%g' \
+-e 's%gtk_font_selection_get_size (GTK_FONT_SELECTION%gtk_font_chooser_get_font_size (GTK_FONT_CHOOSER%g' \
+-e 's%gtk_font_selection_get_size(GTK_FONT_SELECTION%gtk_font_chooser_get_font_size (GTK_FONT_CHOOSER%g' \
+-e 's%gtk_font_selection_get_size (%gtk_font_chooser_get_font_size (%g' \
+-e 's%gtk_font_selection_get_size(%gtk_font_chooser_get_font_size (%g' \
+-e 's%gtk_font_selection_set_font_name (GTK_FONT_SELECTION%gtk_font_chooser_set_font (GTK_FONT_CHOOSER%g' \
+-e 's%gtk_font_selection_set_font_name(GTK_FONT_SELECTION%gtk_font_chooser_set_font (GTK_FONT_CHOOSER%g' \
+-e 's%gtk_font_selection_set_font_name%gtk_font_chooser_set_font%g' \
+-e 's%gtk_font_selection_get_font_name (GTK_FONT_SELECTION%gtk_font_chooser_get_font (GTK_FONT_CHOOSER%g' \
+-e 's%gtk_font_selection_get_font_name(GTK_FONT_SELECTION%gtk_font_chooser_get_font (GTK_FONT_CHOOSER%g' \
+-e 's%gtk_font_selection_get_font_name%gtk_font_chooser_get_font%g' \
+-e 's%gtk_font_button_get_font_name (GTK_FONT_BUTTON%/**RETVAL MUST BE FREED**/gtk_font_chooser_get_font (GTK_FONT_CHOOSER%g' \
+-e 's%gtk_font_button_get_font_name(GTK_FONT_BUTTON%/**RETVAL MUST BE FREED**/gtk_font_chooser_get_font (GTK_FONT_CHOOSER%g' \
+-e 's%gtk_font_button_get_font_name%/**RETVAL MUST BE FREED**/gtk_font_chooser_get_font%g' \
+-e 's%gtk_font_button_set_font_name (GTK_FONT_BUTTON%gtk_font_chooser_set_font (GTK_FONT_CHOOSER%g' \
+-e 's%gtk_font_button_set_font_name(GTK_FONT_BUTTON%gtk_font_chooser_set_font (GTK_FONT_CHOOSER%g' \
+-e 's%gtk_font_button_set_font_name%gtk_font_chooser_set_font%g' \
+-e 's%gtk_font_selection_dialog_set_preview_text (GTK_FONT_SELECTION_DIALOG%gtk_font_chooser_set_preview_text (GTK_FONT_CHOOSER%g' \
+-e 's%gtk_font_selection_dialog_set_preview_text(GTK_FONT_SELECTION_DIALOG%gtk_font_chooser_set_preview_text (GTK_FONT_CHOOSER%g' \
+-e 's%gtk_font_selection_dialog_set_preview_text%gtk_font_chooser_set_preview_text%g' \
+-e 's%gtk_font_selection_dialog_get_preview_text (GTK_FONT_SELECTION_DIALOG%/**RETVAL MUST BE FREED**/gtk_font_chooser_get_preview_text (GTK_FONT_CHOOSER%g' \
+-e 's%gtk_font_selection_dialog_get_preview_text(GTK_FONT_SELECTION_DIALOG%/**RETVAL MUST BE FREED**/gtk_font_chooser_get_preview_text (GTK_FONT_CHOOSER%g' \
+-e 's%gtk_font_selection_dialog_get_preview_text%/**RETVAL MUST BE FREED**/gtk_font_chooser_get_preview_text%g' \
+-e 's%gtk_font_selection_dialog_set_font_name (GTK_FONT_SELECTION_DIALOG%gtk_font_chooser_set_font (GTK_FONT_CHOOSER%g' \
+-e 's%gtk_font_selection_dialog_set_font_name(GTK_FONT_SELECTION_DIALOG%gtk_font_chooser_set_font (GTK_FONT_CHOOSER%g' \
+-e 's%gtk_font_selection_dialog_set_font_name%gtk_font_chooser_set_font%g' \
+-e 's%gtk_font_selection_dialog_get_font_name (GTK_FONT_SELECTION_DIALOG%gtk_font_chooser_get_font (GTK_FONT_CHOOSER%g' \
+-e 's%gtk_font_selection_dialog_get_font_name(GTK_FONT_SELECTION_DIALOG%gtk_font_chooser_get_font (GTK_FONT_CHOOSER%g' \
+-e 's%gtk_font_selection_dialog_get_font_name%gtk_font_chooser_get_font%g' \
+${target}
+}
+#===========================================================================
+
+#===========================================================================
 # >>> GtkScale
 gtk_scale () {
 
@@ -118,6 +171,8 @@ sed -i \
 -e '/gtk_combo_box_set_title/d' \
 -e "s/gtk_tree_view_set_rules_hint/${rules_hint}/" \
 -e '/gtk_tree_view_get_rules_hint/d' \
+-e 's%gtk_widget_size_request%/**add extra NULL param**/ gtk_widget_get_preferred_size%g' \
+-e 's%gtk_widget_modify_font%gtk_widget_override_font%g' \
 ${target}
 
 }
@@ -1359,6 +1414,7 @@ shift
 case $1 in
 	gtk_box)        gtk_box        ;;
 	gtk_button_box) gtk_button_box ;;
+	gtk_font_chooser) gtk_font_chooser  ;;
 	gtk_scale)      gtk_scale      ;;
 	gtk_separator)  gtk_separator  ;;
 	gtk_scrollbar)  gtk_scrollbar  ;;
@@ -1371,6 +1427,7 @@ case $1 in
 	all)
 		gtk_box
 		gtk_button_box
+		gtk_font_chooser
 		gtk_scale
 		gtk_separator
 		gtk_scrollbar

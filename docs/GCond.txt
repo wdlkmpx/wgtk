@@ -1,0 +1,17 @@
+# This is deprecated:
+
+GCond *cond1 = NULL;
+cond1 = g_cond_new ();
+...
+g_cond_free (cond1);
+
+# Since 2.32 GCond should be statically declared and initialized
+
+GCond cond1;
+g_cond_init (&cond1);
+...
+g_cond_clear (&cond1);
+
+# GCond must be emdebbed in a structure to make it work
+# with threads, therefore the program might require
+# some extensive and sensitive changes

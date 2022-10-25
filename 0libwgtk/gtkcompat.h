@@ -2,7 +2,7 @@
  * Public Domain
  */
 
-/** 2022-09-27 **/
+/** 2022-10-20 **/
 
 /*
  * gtkcompat.h, GTK2+ compatibility layer
@@ -12,8 +12,6 @@
  * 
  * The older the GTK version, the more compatible functions are "defined"
  * so it's not wise to use the compiled binary in newer distros or something.
- * 
- * Apps should support gtk2 >= 2.14 / gtk3 >= 3.14
  * 
  */
 
@@ -142,14 +140,29 @@ extern "C"
 #define gtkcompat_widget_set_halign_left(w)   gtk_widget_set_halign(GTK_WIDGET(w), GTK_ALIGN_START)
 #define gtkcompat_widget_set_halign_center(w) gtk_widget_set_halign(GTK_WIDGET(w), GTK_ALIGN_CENTER)
 #define gtkcompat_widget_set_halign_right(w)  gtk_widget_set_halign(GTK_WIDGET(w), GTK_ALIGN_END)
-// using GtkTable format, translate to to GtkGrid
+// using GtkTable format, translate to GtkGrid
 #define gtkcompat_grid_attach(table,child,left,right,top,bottom) \
     gtk_grid_attach((table),(child), (left), (top), (right)-(left), (bottom)-(top))
 #define gtkcompat_grid_new(rows,cols) (gtk_grid_new())
 #endif
 
+#if GTK_MAJOR_VERSION < 4
+#define gtk_button_get_child(button) (gtk_bin_get_child(GTK_BIN(button)))
+#define gtk_button_set_child(button,child) gtk_container_add(GTK_CONTAINER(button),GTK_WIDGET(child))
+//GtkWidget* gtk_button_get_child (GtkButton* button)
+//void gtk_button_set_child (GtkButton* button,GtkWidget* child)
+#endif
+
 
 #if GTK_MAJOR_VERSION == 3
+
+// GTK < 3.22
+#if GTK_MINOR_VERSION < 22
+#define gtk_scrolled_window_set_propagate_natural_height(sw,propagate)
+#define gtk_scrolled_window_set_propagate_natural_width(sw,propagate)
+#define gtk_scrolled_window_get_propagate_natural_height(sw) (TRUE)
+#define gtk_scrolled_window_get_propagate_natural_widtht(sw) (TRUE)
+#endif
 
 // GTK >= 3.20 (gtk_widget_set_focus_on_click)
 #if GTK_MINOR_VERSION >= 20
@@ -167,14 +180,15 @@ extern "C"
 #define GTK_POLICY_EXTERNAL GTK_POLICY_NEVER
 #endif
 
-/* GTK < 3.12
-#if ! GTK_CHECK_VERSION (3, 12, 0)
+// GTK < 3.12
+#if GTK_MINOR_VERSION < 12
 #define gtk_application_set_accels_for_action(app,name,accels)   gtk_application_add_accelerator(app,accels[0],name,NULL)
 #define gtk_widget_set_margin_start(widget,margin) gtk_widget_set_margin_left(widget,margin)
 #define gtk_widget_set_margin_end(widget,margin)   gtk_widget_set_margin_right(widget,margin)
-#endif */
+#endif
 
 #endif /* ------- GTK3 ------- */
+
 
 
 /* ================================================== */
@@ -182,6 +196,12 @@ extern "C"
 /* ================================================== */
 
 #if GTK_MAJOR_VERSION == 2
+
+// GTK < 3.22
+#define gtk_scrolled_window_set_propagate_natural_height(sw,propagate)
+#define gtk_scrolled_window_set_propagate_natural_width(sw,propagate)
+#define gtk_scrolled_window_get_propagate_natural_height(sw) (TRUE)
+#define gtk_scrolled_window_get_propagate_natural_widtht(sw) (TRUE)
 
 // GTK < 3.16
 #define gtk_scrolled_window_set_overlay_scrolling(swindow,overlay)
@@ -198,10 +218,10 @@ extern "C"
 #define gtk_button_set_always_show_image(button,show)
 // GTK < 3.4
 #define gtk_application_window_new(app) gtk_window_new(GTK_WINDOW_TOPLEVEL)
-// GTK < 3.4
 #define gtk_entry_set_placeholder_text(entry,text)
 
 /*** GTK 3.0 ***/
+#define gtk_widget_get_preferred_size(w,min,natural) gtk_widget_size_request(w,min)
 #define GTKCOMPAT_DRAW_SIGNAL "expose_event"
 #define gtk_box_new(ori,spacing) \
   ((ori == GTK_ORIENTATION_HORIZONTAL) ? gtk_hbox_new(FALSE,spacing) \
@@ -294,7 +314,6 @@ typedef struct _GtkComboBoxPrivate GtkComboBoxTextPrivate;
 #define gtk_combo_box_text_prepend_text(combo,text)    gtk_combo_box_prepend_text(combo,text)
 #define gtk_combo_box_text_remove(combo,pos)           gtk_combo_box_remove_text(combo,pos)
 #define gtk_combo_box_text_get_active_text(combo)      (gtk_combo_box_get_active_text(combo))
-//#define gtk_combo_box_get_has_entry(combo) (0)
 #define gtk_combo_box_set_entry_text_column(combo,cl)
 #define gtk_combo_box_get_entry_text_column(combo) (0)
 #define gtk_range_get_round_digits(range) (GTK_RANGE(range)->round_digits)

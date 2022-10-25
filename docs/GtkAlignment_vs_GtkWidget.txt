@@ -1,0 +1,56 @@
+
+In Gtk3, GtkAlignment was probably merged into GtkWidget as properties
+
+GtkAlignment is like an invisible box that can only be used to change
+alignment properties
+
+$$ Functions to replace
+
+GtkWidget* gtk_alignment_new (gfloat xalign,
+                              gfloat yalign,
+                              gfloat xscale,
+                              gfloat yscale);
+
+void gtk_alignment_set  (GtkAlignment *alignment,
+                         gfloat xalign,
+                         gfloat yalign,
+                         gfloat xscale,
+                         gfloat yscale);
+
+void gtk_alignment_set_padding (GtkAlignment *alignment,
+                                guint padding_top,
+                                guint padding_bottom,
+                                guint padding_left,
+                                guint padding_right);
+
+void gtk_alignment_get_padding (GtkAlignment *alignment,
+                                guint *padding_top,
+                                guint *padding_bottom,
+                                guint *padding_left,
+                                guint *padding_right);
+
+
+Examples:
+
+-    GtkWidget *alignment3;
+-    alignment3 = gtk_alignment_new (0.5, 0.5, 0, 0);
+-    gtk_widget_show (alignment3);
+-    gtk_container_add (GTK_CONTAINER (rip_button), alignment3);
++++  gtk_widget_set_halign(rip_button, GTK_ALIGN_CENTER);
++++  gtk_widget_set_valign(rip_button, GTK_ALIGN_CENTER);
+
+-    GtkWidget *alignment8;
+-    alignment8 = gtk_alignment_new (0.5, 0.5, 1, 1);
+-    gtk_widget_show (alignment8);
+-    gtk_container_add (GTK_CONTAINER (frame3), alignment8);
+-    gtk_alignment_set_padding (GTK_ALIGNMENT (alignment8), 2, 2, 12, 2);
++++  gtk_widget_set_halign(frame3, GTK_ALIGN_FILL);
+
+It's the GtkAligment that must be added and removed from
+container widgets, so must replace it with the "aligned" widget
+when removing GtkAlignment stuff
+
+     vbox2 = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);
+     gtk_widget_show (vbox2);
+-    gtk_container_add (GTK_CONTAINER (alignment8), vbox2);
++++  gtk_container_add (GTK_CONTAINER (frame3), vbox2);

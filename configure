@@ -1,6 +1,5 @@
 #!/bin/sh
-# This is free and unencumbered software released into the public domain.
-# For more information, please refer to <http://unlicense.org/>
+# Public Domain
 #
 
 if ! [ -f Makefile ] ; then
@@ -23,6 +22,7 @@ config_mk_flags=
 w_files_in=
 sysroot=
 
+#==========================================================
 
 w_new_option() # $1=opt [$2=env_variable]
 {
@@ -39,6 +39,22 @@ w_new_option_with()
 	w_opts_check="$w_opts_check $1"
 }
 
+exit_error() {
+	test "$1" && echo "$@"
+	if [ -f config.log ] ; then
+		echo "See config.log, there might be some clues there"
+	fi
+	rm -f config.h config.mk
+	exit 1
+}
+
+
+getvalue()
+{
+	echo $1 | cut -f 2 -d '='
+}
+
+#==========================================================
 
 if [ -f configure.project ] ; then
 	. ./configure.project
@@ -114,16 +130,6 @@ fi
 # w_conf/gettext: ./configure po|pot
 
 #==========================================================
-
-exit_error() {
-	test "$1" && echo "$@"
-	if [ -f config.log ] ; then
-		echo "See config.log, there might be some clues there"
-	fi
-	rm -f config.h config.mk
-	exit 1
-}
-
 
 check_command() # 1:<cmd> finds $1 in $PATH
 {
@@ -616,10 +622,6 @@ print_extra_env_variables()
 }
 
 #==========================================================
-
-getvalue() {
-	echo $1 | cut -f 2 -d '='
-}
 
 for i in $@
 do

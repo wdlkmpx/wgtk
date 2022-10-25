@@ -31,28 +31,37 @@ typedef struct _WGtkActionEntry WGtkActionEntry;
 
 // =================================================
 
+void w_gtk_check_version (int gtk_ver);
+
 GtkWidget * w_gtk_window_new (const char * title,
                               GtkWindow * parent,
-                              GtkApplication * app, // gtkcompat.h < 3 = `void * app`
-                              gboolean resizable);
+                              GtkApplication * app, // NULL gtkcompat.h < 3 = `void * app`
+                              gboolean resizable,
+                              GtkWidget ** main_vbox  /* out */);
 
 GtkWidget * w_gtk_dialog_new (const char * title,
                               GtkWindow * parent,
                               gboolean resizable,
                               GtkWidget ** main_vbox); /* out */
 
-GtkWidget * w_gtk_frame_vbox_new (char * label,
-                                  GtkWidget * parent_box,
+GtkWidget * w_gtk_frame_new (char * label, /* supports markup */
+                             GtkWidget * parent_box,
+                             GtkWidget * label_widget);
+GtkWidget * w_gtk_frame_vbox_new (char * label, /* supports markup */
                                   int children_spacing,
-                                  int box_padding);
+                                  GtkWidget * parent_box,
+                                  GtkWidget * frame_label_widget); /* NULL */
+GtkWidget * w_gtk_expander_vbox_new (char * label,
+                                     int children_spacing,
+                                     GtkWidget * parent_box);
 
-GtkWidget * w_gtk_button_new (const char * label,
+GtkWidget * w_gtk_button_new (const char * label, /* supports markup if not using icons */
                               const char * icon_name,
                               gpointer clicked_cb,
                               gpointer cdata);
 
 GtkWidget * w_gtk_toolbar_button_new (GtkWidget *box_toolbar,
-                                      const char *label,
+                                      const char *label, /* DOES NOT support markup */
                                       const char *tooltip,
                                       const char *icon_name,
                                       GtkWidget *wicon,
@@ -68,7 +77,8 @@ GtkWidget * w_gtk_image_new_from_icon_name (const char *icon_name, GtkIconSize s
 void w_gtk_image_set_from_icon_name (GtkImage *img, const char *icon_name, GtkIconSize size);
 void w_gtk_button_set_icon_name (GtkButton *button, const char *icon_name);
 
-GtkWidget * w_gtk_notebook_add_tab (GtkWidget * notebook, char * label_str);
+GtkWidget * w_gtk_notebook_add_tab_grid (GtkWidget * notebook, char * label_str);
+GtkWidget * w_gtk_notebook_add_tab_box (GtkWidget * notebook, char * label_str);
 void w_gtk_widget_change_tooltip (GtkWidget *widget, const char *new_text);
 
 int  w_gtk_tree_view_get_num_selected (GtkWidget *tv);
@@ -76,31 +86,27 @@ void w_gtk_tree_view_clear (GtkWidget *tv);
 void w_gtk_tree_view_select_all (GtkWidget *tv);
 void w_gtk_tree_view_deselect_all (GtkWidget *tv);
 void w_gtk_tree_view_select_row (GtkWidget *tv, int n);
+int w_gtk_tree_view_get_selection_index (GtkWidget *tv);
 
 void w_gtk_combo_box_populate_from_glist (GtkWidget *combo, GList *strings, int default_index);
 void w_gtk_combo_box_populate_from_strv (GtkWidget *combo,
                                          const char **strv,
                                          int default_index,
                                          gboolean gettext);
-
 int w_gtk_combo_box_get_count (GtkWidget *combo);
 void w_gtk_combo_box_find_and_select (GtkWidget *combo, char *str);
-gboolean w_gtk_combo_box_find_str (GtkWidget *combo, const char *str,
+gboolean w_gtk_combo_box_find_str (GtkWidget *combo,
+                                   const char *str,
                                    gboolean select,
                                    GtkTreeIter *out_iter);
 void w_gtk_combo_box_select_or_prepend (GtkWidget *combo, const char *str);
 void w_gtk_combo_box_set_w_model (GtkWidget *combo, gboolean sort);
 
+// =================================================
 
-#if GTK_MAJOR_VERSION >= 3
-#define w_gtk_widget_add_alignment(widget) (widget)
-#else
-// GTK <= 2
-#define GTK_FONT_CHOOSER GTK_WIDGET
-#define GtkFontChooser GtkWidget
-char *gtk_font_chooser_get_font (GtkFontChooser* fontchooser); // gtk3.2+
-void gtk_font_chooser_set_font (GtkFontChooser *fontchooser, const char *fontname); // gtk3.2+
-GtkWidget * w_gtk_widget_add_alignment (GtkWidget *widget);
+#if GTK_MAJOR_VERSION <= 2
+void gtk_widget_set_hexpand (GtkWidget *widget, gboolean expand);
+void gtk_widget_set_vexpand (GtkWidget *widget, gboolean expand);
 void gtk_widget_set_halign (GtkWidget *widget, GtkAlign align);
 void gtk_widget_set_valign (GtkWidget *widget, GtkAlign align);
 void gtk_widget_set_margin_start (GtkWidget *widget, gint margin);
@@ -110,11 +116,30 @@ void gtk_widget_set_margin_end (GtkWidget *widget, gint margin);
 #define gtk_widget_set_margin_right gtk_widget_set_margin_end
 void gtk_widget_set_margin_bottom (GtkWidget *widget, gint margin);
 void gtk_widget_set_margin_top (GtkWidget *widget, gint margin);
+GtkWidget * gtk_grid_new (void);
+// gtk_widget_set_*align / gtk_widget_set_*expand / gtk_widget_set_margin_*
+//   will only work after gtk_grid_attach, calling them before has no effect...
 void gtk_grid_attach (GtkGrid *grid, GtkWidget *child, gint left, gint top, gint width, gint height);
+
+#define GTK_FONT_CHOOSER GTK_WIDGET  // GtkFontChooser: gtk3.2+
+#define GtkFontChooser GtkWidget //can't be GtkFontSelection, several wigdet classes are involved
+char *gtk_font_chooser_get_font (GtkFontChooser* fontchooser);
+void gtk_font_chooser_set_font (GtkFontChooser *fontchooser, const char *fontname);
+void gtk_font_chooser_set_preview_text (GtkFontChooser *fontchooser, const char *text);
+char * gtk_font_chooser_get_preview_text (GtkFontChooser *fontchooser);
+PangoFontFace * gtk_font_chooser_get_font_face (GtkFontChooser *fontchooser);
+PangoFontFamily * gtk_font_chooser_get_font_family (GtkFontChooser *fontchooser);
+int gtk_font_chooser_get_font_size (GtkFontChooser *fontchooser);
+GtkWidget* gtk_font_chooser_widget_new (void);
+#define gtk_font_chooser_dialog_new(title,parent) (gtk_font_selection_dialog_new(title))
+
 
 // GTK < 2.24
 #if !GTK_CHECK_VERSION(2, 24, 0)
 gboolean gtk_combo_box_get_has_entry (GtkComboBox *combo_box);
+#endif
+#if !GTK_CHECK_VERSION(2, 22, 0)
+gboolean gtk_widget_send_focus_change (GtkWidget *widget, GdkEvent *event);
 #endif
 #endif
 
@@ -157,7 +182,7 @@ typedef struct _WGtkGridParams
 
 #define WGtkTableParams WGtkGridParams
 
-GtkWidget * w_gtk_grid_new (GtkWidget *box);
+GtkWidget * w_gtk_grid_new (GtkWidget *parent_box, int row_spacing);
 void w_gtk_grid_append_row (WGtkTableParams *t);
 #define w_gtk_table_new w_gtk_grid_new
 #define w_gtk_table_append_row(WGtkTableParams) w_gtk_table_append_row(WGtkTableParams)
@@ -166,6 +191,40 @@ GtkWidget  * w_gtk_recent_menu_new (const char * application, gpointer activated
 void w_gtk_action_group_destroy_action (GtkActionGroup *action_group, const char *action_name);
 
 // =================================================
+
+void w_gtk_text_view_append (GtkWidget *tw, const char *tag, char *str);
+void w_gtk_text_view_scroll_to_end (GtkWidget *tw);
+void w_gtk_text_view_scroll_to_start (GtkWidget *tw);
+
+void EditorClear (GtkTextView *tw);
+void EditorDeleteLine (GtkTextView *tw, int linenum);
+void EditorGetCurIter (GtkTextView *tw, GtkTextIter *iter);
+char *EditorGetCurLine (GtkTextView *tw);
+int EditorGetCurLineLen (GtkTextView *tw);
+int EditorGetCurLineNum (GtkTextView *tw);
+char *EditorGetCurWord (GtkTextView *tw, GtkTextIter *start_iter, GtkTextIter *end_iter);
+char *EditorGetLine (GtkTextView *tw, int linenum);
+void EditorGetLineIters (GtkTextView *tw, int linenum, GtkTextIter *start, GtkTextIter *end);
+void EditorGetLineOffsets (GtkTextView *tw, int linenum, int *start, int *end);
+int EditorGetNumLines (GtkTextView *tw);
+int EditorGetSelectedLineNums (GtkTextView *tw, int *startline, int *endline);
+char *EditorGetSelectedText (GtkTextView *tw, int *start, int *end, int *selcount);
+gboolean EditorHasSelection (GtkTextView *tw);
+int EditorInsertLine (GtkTextView *tw, int linenum, char *txt);
+int EditorMoveToLineEnd (GtkTextView *tw);
+int EditorMoveToLineStart (GtkTextView *tw);
+gboolean EditorSelectLine (GtkTextView *tw, int linenum, gboolean del_eol);
+gboolean EditorSelectOneChar (GtkTextView *tw);
+void EditorSetSelectedText (GtkTextView *tw, char *text);
+//void EditorTextCen (GtkTextView *tw, int center, int width, int usetab);
+void EditorTextChangeCase (GtkTextView *tw);
+void EditorTextConcatenateLines (GtkTextView *tw);
+void EditorTextSplitLine (GtkTextView *tw, int linelen);
+//void EditorTextTabify (GtkTextView *tw, int tabify, int tabsize);
+void EditorTextTitleCase (GtkTextView *tw);
+
+gchar *TextViewGetText (GtkTextView *tw);
+void TextViewSetText (GtkTextView *tw, gchar *text);
 
 #ifdef __cplusplus
 }

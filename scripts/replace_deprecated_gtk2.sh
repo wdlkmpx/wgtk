@@ -724,6 +724,13 @@ sed -i \
 -e 's%gtk_object_destroy%gtk_widget_destroy%g' \
 ${target}
 
+sed -i \
+-e 's%GTK_WIDGET_UNSET_FLAGS.*GTK_CAN_FOCUS%gtk_widget_set_can_focus (WWIDGETT, FALSE%g' \
+-e 's%GTK_WIDGET_SET_FLAGS.*GTK_CAN_FOCUS%gtk_widget_set_can_focus (WWIDGETT, TRUE%g' \
+-e 's%GTK_WIDGET_UNSET_FLAGS.*GTK_CAN_DEFAULT%gtk_widget_set_can_default (WWIDGETT, FALSE%g' \
+-e 's%GTK_WIDGET_SET_FLAGS.*GTK_CAN_DEFAULT%gtk_widget_set_can_default (WWIDGETT, TRUE%g' \
+${target}
+
 }
 #===========================================================================
 

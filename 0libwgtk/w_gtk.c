@@ -13,24 +13,33 @@
 #endif
 
 #include "w_gtk.h"
+#define W_GTK_VERSION GTK_MAJOR_VERSION
+
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
-#ifdef ENABLE_NLS
-#include <locale.h>
-#include <libintl.h>
-#else
-#define gettext(x) (x)
-#endif
+// put this in main() before initializing gtk and stuff
+void w_gtk_check_version (int gtk_ver)
+{
+    if (W_GTK_VERSION != gtk_ver) {
+        printf ("W_GTK_VERSION  : %d\n", W_GTK_VERSION);
+        printf ("App GTK Version: %d\n",   gtk_ver);
+        puts ("ERROR!\n");
+        exit (-1);
+    }
+}
+
 
 GtkWidget * w_gtk_window_new (const char * title,
                               GtkWindow * parent,
-                              GtkApplication * app, // gtkcompat.h < 3 = `void * app`
-                              gboolean resizable)
+                              GtkApplication * app, // NULL gtkcompat.h < 3 = `void * app`
+                              gboolean resizable,
+                              GtkWidget ** main_vbox  /* out */)
 {
     GtkWidget * window;
     if (app) {
-#if GTK_CHECK_VERSION (3, 4, 0)
+#ifdef USE_GTK_APPLICATION
         window = gtk_application_window_new (app);
 #else
         window = gtk_window_new (GTK_WINDOW_TOPLEVEL);
@@ -53,9 +62,33 @@ GtkWidget * w_gtk_window_new (const char * title,
         gtk_window_set_resizable (GTK_WINDOW (window), FALSE);
     }
 
+    if (main_vbox) {
+        *main_vbox = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);
+        gtk_container_add (GTK_CONTAINER(window), *main_vbox);
+        /* padding */
+        gtk_container_set_border_width (GTK_CONTAINER (*main_vbox), 5);
+    }
+
     return window;
 }
 
+/*
+GtkWidget * w_gtk_window_add_main_vbox (GtkWidget *window)
+{ // returns a GtkBox
+    GtkWidget * main_vbox = NULL;
+    if (GTK_IS_DIALOG(window)) {
+        main_vbox = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);
+        gtk_container_add (GTK_CONTAINER(window), main_vbox);
+        // padding
+        gtk_container_set_border_width (GTK_CONTAINER (main_vbox), 5);
+    } else if (GTK_IS_DIALOG(window)) {
+        main_vbox = gtk_dialog_get_content_area (GTK_DIALOG (window));
+        // padding
+        gtk_container_set_border_width (GTK_CONTAINER (main_vbox), 4);
+    }
+    return main_vbox;
+}
+*/
 
 GtkWidget * w_gtk_dialog_new (const char * title,
                               GtkWindow * parent,
@@ -96,22 +129,65 @@ GtkWidget * w_gtk_dialog_new (const char * title,
 }
 
 
-GtkWidget * w_gtk_frame_vbox_new (char * label,
-                                  GtkWidget * parent_box,
+GtkWidget * w_gtk_frame_new (char * label, /* supports markup */
+                             GtkWidget * parent_box,
+                             GtkWidget * label_widget)
+{  // returns a GtkFrame
+    GtkWidget * frame       = NULL;
+    GtkWidget * frame_label = NULL;
+    frame = gtk_frame_new (NULL);
+    gtk_box_pack_start (GTK_BOX (parent_box), frame, FALSE, FALSE, 0);
+    if (label_widget) {
+        // it's possible to add other widgets as a label for GtkFrame
+        // i.e: GtkCheckMenuItem
+        gtk_frame_set_label_widget (GTK_FRAME (frame), label_widget);
+    } else if (label) {
+        frame_label = gtk_label_new (label);
+        gtk_frame_set_label_widget (GTK_FRAME (frame), frame_label);
+        gtk_label_set_use_markup (GTK_LABEL (frame_label), TRUE);
+    }
+    gtk_widget_show (frame);
+    if (frame_label) gtk_widget_show (frame_label);
+    return frame;
+}
+
+
+GtkWidget * w_gtk_frame_vbox_new (char * label, /* supports markup */
                                   int children_spacing,
-                                  int box_padding)
+                                  GtkWidget * parent_box,
+                                  GtkWidget * frame_label_widget) /* NULL */
 {
     // returns a vbox inside a frame
-    GtkWidget * frame = gtk_frame_new (label);
-    gtk_box_pack_start (GTK_BOX (parent_box), frame, FALSE, FALSE, 0);
-
-    GtkWidget * frame_vbox = gtk_box_new (GTK_ORIENTATION_VERTICAL, children_spacing);
+    GtkWidget * frame;
+    GtkWidget * frame_vbox;
+    frame      = w_gtk_frame_new (label, parent_box, frame_label_widget);
+    frame_vbox = gtk_box_new (GTK_ORIENTATION_VERTICAL, children_spacing);
     gtk_container_add (GTK_CONTAINER (frame), frame_vbox);
-    if (box_padding) {
-        /* padding */
-        gtk_container_set_border_width (GTK_CONTAINER (frame_vbox), box_padding);
-    }
+    //gtk_frame_set_shadow_type (GTK_FRAME(frame), GTK_SHADOW_IN);
+    /* padding */
+    gtk_container_set_border_width (GTK_CONTAINER (frame_vbox), 5);
     return frame_vbox;
+}
+
+
+GtkWidget * w_gtk_expander_vbox_new (char * label,
+                                     int children_spacing,
+                                     GtkWidget * parent_box)
+{
+    // returns a vbox inside a frame
+    GtkWidget* expander;
+    GtkWidget* hiddenbox;
+
+    expander = gtk_expander_new (label);
+    if (parent_box) {
+        gtk_box_pack_start (GTK_BOX (parent_box), expander, FALSE, FALSE, 0);
+    }
+
+    hiddenbox = gtk_box_new (GTK_ORIENTATION_VERTICAL, children_spacing);
+    gtk_container_add (GTK_CONTAINER (expander), hiddenbox);
+    /* padding */
+    //gtk_container_set_border_width (GTK_CONTAINER(hiddenbox), 5);
+    return hiddenbox;
 }
 
 
@@ -158,18 +234,41 @@ void w_gtk_button_set_icon_name (GtkButton *button, const char *icon_name)
 }
 
 
-GtkWidget * w_gtk_button_new (const char * label,
+GtkWidget * w_gtk_label_new (const char *text)
+{
+    GtkWidget * label;
+    if (strchr(text, '_')) {
+        label = gtk_label_new_with_mnemonic (text);
+    } else {
+        label = gtk_label_new (text);
+    }
+    if (strchr(text,'>') && strstr(text,"</")) {
+        // example: "<b>_Close</b>"
+        gtk_label_set_use_markup (GTK_LABEL(label), TRUE);
+    }
+    return label;
+}
+
+
+GtkWidget * w_gtk_button_new (const char * label, /* supports markup if not using icons */
                               const char * icon_name,
                               gpointer clicked_cb,
                               gpointer cdata)
 {
-    GtkWidget * button;
+    GtkWidget * button = NULL;
+    GtkWidget * lbl = NULL;
+    gboolean markup = FALSE;
+    button = gtk_button_new ();
     if (label) {
         button = gtk_button_new_with_mnemonic (label);
-    } else {
-        button = gtk_button_new ();
+        if (strchr(label,'>') && strstr(label,"</")) {
+            lbl = gtk_button_get_child (GTK_BUTTON(button));
+            gtk_label_set_use_markup (GTK_LABEL(lbl), TRUE);
+            markup = TRUE;
+        }
     }
-    if (icon_name) {
+    // Icons disrupt markup text, so ignore icons if using markup text
+    if (icon_name && !markup) {
         w_gtk_button_set_icon_name (GTK_BUTTON(button), icon_name);
         gtk_button_set_always_show_image (GTK_BUTTON(button), TRUE); //GTK3.6+
     }
@@ -200,7 +299,7 @@ void w_gtk_button_flat (GtkWidget * button, gboolean reduce_size)
 
 
 GtkWidget * w_gtk_toolbar_button_new (GtkWidget *box_toolbar,
-                                      const char *label,
+                                      const char *label, /* DOES NOT support markup */
                                       const char *tooltip,
                                       const char *icon_name,
                                       GtkWidget *wicon,
@@ -210,7 +309,7 @@ GtkWidget * w_gtk_toolbar_button_new (GtkWidget *box_toolbar,
     GtkWidget * button_icon = wicon;
     // ignore label if there is an icon, it looks bad with both...
     if (!icon_name && !wicon) {
-        button = gtk_button_new_with_label (label);
+        button = gtk_button_new_with_mnemonic (label);
     } else {
         button = gtk_button_new ();
     }
@@ -270,24 +369,37 @@ GtkWidget * w_gtk_button_new_from_actions (WGtkActionEntry *actions,
 }
 
 
-GtkWidget * w_gtk_notebook_add_tab (GtkWidget * notebook, char * label_str)
-{
-    // returns GtkGrid / GtkTable
+GtkWidget * w_gtk_notebook_add_tab_box (GtkWidget * notebook, char * label_str)
+{ // returns a GtkBox
     GtkWidget *vbox;
     GtkWidget *label;
-    GtkWidget *table;
     vbox  = gtk_box_new (GTK_ORIENTATION_VERTICAL, 5);
-    label = gtk_label_new_with_mnemonic (label_str);
-    table = w_gtk_grid_new (vbox);
+    if (label_str && strchr(label_str,'_')) {
+        label = gtk_label_new_with_mnemonic (label_str);
+    } else {
+        label = gtk_label_new (label_str);
+    }
+    gtk_container_set_border_width (GTK_CONTAINER (vbox), 5); /* padding */
     gtk_notebook_append_page (GTK_NOTEBOOK(notebook), vbox, label);
+    return vbox;
+}
+
+
+GtkWidget * w_gtk_notebook_add_tab_grid (GtkWidget * notebook, char * label_str)
+{ // returns GtkGrid / GtkTable
+    GtkWidget *vbox;
+    GtkWidget *table;
+    vbox = w_gtk_notebook_add_tab_box (notebook, label_str);
+    table = w_gtk_grid_new (vbox, 0);
     return table;
 }
+
 
 /* ================================================== */
 /*               GtkTable / GtkGrid                   */
 /* ================================================== */
 
-GtkWidget * w_gtk_grid_new (GtkWidget *box)
+GtkWidget * w_gtk_grid_new (GtkWidget *parent_box, int row_spacing)
 {
     // new GtkGrid or a GtkTable that must be resized
     GtkWidget * table;
@@ -295,18 +407,19 @@ GtkWidget * w_gtk_grid_new (GtkWidget *box)
 #if GTK_MAJOR_VERSION >= 3
     table = gtk_grid_new ();
     gtk_grid_set_column_spacing (GTK_GRID(table), 5);
-    //gtk_grid_set_row_spacing (GTK_GRID(table), 3);
+    gtk_grid_set_row_spacing (GTK_GRID(table), row_spacing);
 #else
     table = gtk_table_new (1, 1, FALSE);
     gtk_table_set_col_spacings (GTK_TABLE(table), 5);
-    //gtk_table_set_row_spacings (GTK_TABLE(table), 3);
+    gtk_table_set_row_spacings (GTK_TABLE(table), row_spacing);
 #endif
-    if (box) {
+    if (parent_box) {
         //gtk_box_set_homogeneous (GTK_BOX(box), TRUE);
-        gtk_container_set_border_width (GTK_CONTAINER (box), 5);
+        /* padding */
+        gtk_container_set_border_width (GTK_CONTAINER(parent_box), 5);
         // FALSE, FALSE is required for GtkTable, otherwise
         // the widgets height may be incorrect
-        gtk_box_pack_start (GTK_BOX(box), table, FALSE, FALSE, 0);
+        gtk_box_pack_start (GTK_BOX(parent_box), table, FALSE, FALSE, 0);
     }
     return table;
 }
@@ -336,15 +449,6 @@ static void set_walignment (WGtkAlignmentParams *col)
 void w_gtk_grid_append_row (WGtkTableParams *t)
 {
     int ncols;
-#if GTK_MAJOR_VERSION <= 2
-    // resize GtkTable, it should be created with 1_row 1_col
-    gtk_table_resize (GTK_TABLE(t->table), t->row+1, t->cols);
-    // use GtkAlignment to emulate some gtk3 functions (gtk_widget_set_halign)
-    t->c1.w = w_gtk_widget_add_alignment (t->c1.w);
-    t->c2.w = w_gtk_widget_add_alignment (t->c2.w);
-    t->c3.w = w_gtk_widget_add_alignment (t->c3.w);
-    t->c4.w = w_gtk_widget_add_alignment (t->c4.w);
-#endif
     if (!t->c1.w && !t->c2.w && !t->c3.w && !t->c4.w) {
         t->c1.w = gtk_label_new ("");
     }
@@ -459,173 +563,29 @@ void w_gtk_tree_view_select_row (GtkWidget *tv, int n)
 }
 
 
-/* ================================================== */
-/*                  COMBO BOX                         */
-/* ================================================== */
-
-
-void w_gtk_combo_box_populate_from_glist (GtkWidget *combo, GList *strings, int default_index)
+int w_gtk_tree_view_get_selection_index (GtkWidget *tv) 
 {
-    GtkListStore *store;
-    GtkTreeIter iter;
-    GList * list;
-    char * text;
-    int len = 0;
-
-    store = GTK_LIST_STORE (gtk_combo_box_get_model(GTK_COMBO_BOX(combo)));
-    gtk_list_store_clear (store);
-    //gtk_combo_box_text_remove_all (GTK_COMBO_BOX_TEXT (combo));
-    if (!strings) {
-        return; // nothing to add
-    }
-    for (list = strings;  list;  list = list->next)
-    {
-        text = (char *) list->data;
-        gtk_list_store_append (store, &iter);
-        gtk_list_store_set (store, &iter, 0, text, -1);
-        //gtk_combo_box_text_append_text (GTK_COMBO_BOX_TEXT (combo), text);
-        len++;
-    }
-    if (default_index >= len) {
-        default_index = 0;
-    }
-    if (default_index >= 0) {
-        gtk_combo_box_set_active (GTK_COMBO_BOX (combo), default_index);
-    }
-}
-
-
-void w_gtk_combo_box_populate_from_strv (GtkWidget *combo,
-                                         const char **strv,
-                                         int default_index,
-                                         gboolean gettext)
-{
-    int i;
-    GtkListStore * store;
-    GtkTreeIter iter;
-    char *str;
-    store = GTK_LIST_STORE (gtk_combo_box_get_model (GTK_COMBO_BOX(combo)));
-    gtk_list_store_clear (store);
-    //gtk_combo_box_text_remove_all (GTK_COMBO_BOX_TEXT (combo));
-    if (!strv || !*strv) {
-        return; /* nothing to add */
-    }
-    for (i = 0; strv[i]; i++) {
-#ifdef ENABLE_NLS
-        str = gettext ? gettext(strv[i]) : (char*) strv[i];
-#else
-        str = (char*) strv[i];
-#endif
-        gtk_list_store_append (store, &iter);
-        gtk_list_store_set (store, &iter, 0, str, -1);
-        //gtk_combo_box_text_append_text (GTK_COMBO_BOX_TEXT (combo), strv[i]);
-    }
-    if (default_index >= i) {
-        default_index = 0;
-    }
-    if (default_index >= 0) {
-        gtk_combo_box_set_active (GTK_COMBO_BOX (combo), default_index);
-    }
-}
-
-
-int w_gtk_combo_box_get_count (GtkWidget *combo)
-{
-    GtkTreeModel * model;
+    GtkTreeView      *tree  = GTK_TREE_VIEW(tv);
+    GtkTreeModel     *model = gtk_tree_view_get_model (tree); // a GtkListStore
+    GtkTreeSelection *tsel  = gtk_tree_view_get_selection (tree);
     GtkTreeIter iter;
     gboolean valid;
-    int count = 0;
-    model = gtk_combo_box_get_model (GTK_COMBO_BOX(combo));
+    GtkTreePath *path;
+    char *pathstr;
+    int index = -1;
     valid = gtk_tree_model_get_iter_first (model, &iter);
-    while (valid) {
-        count++;
-        valid = gtk_tree_model_iter_next (model, &iter);
-    }
-    return count;
-}
-
-
-gboolean w_gtk_combo_box_find_str (GtkWidget *combo, const char *str,
-                                   gboolean select,
-                                   GtkTreeIter *out_iter)
-{
-    GtkTreeModel *model;
-    GtkTreeIter local_iter;
-    GtkTreeIter *iter = out_iter ? out_iter : &local_iter;
-    gboolean valid;
-    gboolean found = FALSE;
-    char *value;
-    if (!str) {
-        return found;
-    }
-    model = gtk_combo_box_get_model (GTK_COMBO_BOX(combo));
-    valid = gtk_tree_model_get_iter_first (model, iter);
-    while (valid) {
-        gtk_tree_model_get (model, iter, 0, &value, -1);
-        if (g_strcmp0 (value, str) == 0) {
-            found = TRUE;
+    while (valid)
+    {
+        if (gtk_tree_selection_iter_is_selected(tsel, &iter)) {
+            path    = gtk_tree_model_get_path (model, &iter);
+            pathstr = gtk_tree_path_to_string (path);
+            index   = atoi (pathstr);
+            g_free (pathstr);
             break;
         }
-        valid = gtk_tree_model_iter_next (model, iter);
+        valid = gtk_tree_model_iter_next (model, &iter);
     }
-    if (found && select) {
-        gtk_combo_box_set_active_iter (GTK_COMBO_BOX(combo), iter);
-    }
-    return found;
-}
-
-
-void w_gtk_combo_box_select_or_prepend (GtkWidget *combo, const char *str)
-{
-    if (!str || !*str) {
-        return;
-    }
-    if (!w_gtk_combo_box_find_str (combo, str, TRUE, NULL)) {
-        gtk_combo_box_text_prepend_text (GTK_COMBO_BOX_TEXT(combo), str);
-        gtk_combo_box_set_active (GTK_COMBO_BOX(combo), 0);
-    }
-}
-
-
-void w_gtk_combo_box_set_w_model (GtkWidget *combo, gboolean sort)
-{
-    // column 0: text
-    // column 1: pointer (hidden)
-    GtkCellRenderer * cell;
-    GtkListStore * store;
-    GtkTreeSortable * sortable;
-
-    if (combo)
-    {   // unset previous model
-#if GTK_MAJOR_VERSION >= 3
-        //Gtk-CRITICAL **: gtk_cell_layout_set_attributes: assertion 'GTK_IS_CELL_RENDERER (cell)' failed
-        if (gtk_combo_box_get_has_entry (GTK_COMBO_BOX(combo))) {
-            gtk_combo_box_set_entry_text_column (GTK_COMBO_BOX(combo), 0);
-        }
-#endif
-        gtk_combo_box_set_model (GTK_COMBO_BOX(combo), NULL);
-        gtk_cell_layout_clear (GTK_CELL_LAYOUT(combo));
-    }
-
-    store = gtk_list_store_new (2, G_TYPE_STRING, G_TYPE_POINTER);
-    gtk_combo_box_set_model (GTK_COMBO_BOX(combo), GTK_TREE_MODEL(store));
-    g_object_unref (store);
-
-    cell = gtk_cell_renderer_text_new ();
-    gtk_cell_layout_pack_start (GTK_CELL_LAYOUT (combo), cell, TRUE);
-    gtk_cell_layout_set_attributes (GTK_CELL_LAYOUT (combo), cell,
-                                    "text", 0, NULL);
-    if (sort) {
-        sortable = GTK_TREE_SORTABLE(store);
-        gtk_tree_sortable_set_sort_column_id (sortable, 0, GTK_SORT_ASCENDING);
-    }
-#if GTK_CHECK_VERSION(2, 24, 0)
-    /* gtk 2.24 using gtk_combo_box_new_with_entry() */
-    //GLib-GObject-WARNING **: unable to set property 'text' of type 'gchararray' from value of type 'guchar'
-    if (gtk_combo_box_get_has_entry (GTK_COMBO_BOX(combo))) {
-        gtk_combo_box_set_entry_text_column (GTK_COMBO_BOX(combo), 0);
-    }
-#endif
+    return index;
 }
 
 
@@ -635,17 +595,35 @@ void w_gtk_combo_box_set_w_model (GtkWidget *combo, gboolean sort)
 
 #if GTK_MAJOR_VERSION < 3
 
-GtkWidget * w_gtk_widget_add_alignment (GtkWidget *widget)
+GtkWidget * gtk_grid_new (void)
+{
+    return gtk_table_new (1, 1, FALSE);
+}
+
+GtkWidget * w_gtk_widget_get_walignment (GtkWidget *widget, gboolean create_if_needed)
 {
     // this will be handy to emulate some gtk3 functions (gtk_widget_set_halign, etc)
-    // use g_object_get_data(widget,"alignment") to get the alignment to apply properties
+    // use g_object_get_data(widget,"walignment") to get the alignment to apply properties
+    GtkWidget *alignment;
     if (!widget) {
-        return NULL;
+        return NULL; /* error */
     }
-    GtkWidget *alignment; /* GtkAlignment */
-    alignment = gtk_alignment_new (0.5, 0.5, 0, 0);
-    gtk_container_add (GTK_CONTAINER(alignment), widget);
-    g_object_set_data (G_OBJECT(widget), "alignment", alignment);
+    // return itself if widget is a GtkAlignment
+    if (GTK_IS_ALIGNMENT(widget)) {
+        return widget;
+    }
+    // see if widget already has a GtkAlignment widget
+    alignment = g_object_get_data (G_OBJECT(widget), "walignment");
+    if (alignment) {
+        return alignment;
+    }
+    if (create_if_needed) {
+        // create new GtkAlignment and assign values
+        alignment = gtk_alignment_new (0.5, 0.5, 0, 0);
+        gtk_container_add (GTK_CONTAINER(alignment), widget);
+        g_object_set_data (G_OBJECT(widget), "walignment", alignment);
+        g_object_set_data (G_OBJECT(alignment), "waligned", widget);
+    }
     return alignment;
 }
 
@@ -692,13 +670,8 @@ static void misc_set_padding (GtkWidget *widget, gint margin, gboolean horizonta
 
 static int alignment_set_align (GtkWidget *widget, GtkAlign align, char *property)
 {
-    GtkWidget *alignment = NULL;
     char *p2;
-    if (GTK_IS_ALIGNMENT(widget)) {
-        alignment = widget;
-    } else {
-        alignment = g_object_get_data (G_OBJECT(widget), "alignment");
-    }
+    GtkWidget *alignment = w_gtk_widget_get_walignment (widget, FALSE);
     if (!alignment) {
         return -1;
     }
@@ -719,22 +692,6 @@ static int alignment_set_align (GtkWidget *widget, GtkAlign align, char *propert
     return 0;
 }
 
-static int alignment_set_padding (GtkWidget *widget, int margin, char *property)
-{
-    GtkWidget *alignment = NULL;
-    if (GTK_IS_ALIGNMENT(widget)) {
-        alignment = widget;
-    } else {
-        alignment = g_object_get_data (G_OBJECT(widget), "alignment");
-    }
-    if (!alignment) {
-        return -1;
-    }
-    g_object_set (G_OBJECT(alignment), property, margin, NULL);
-    return 0;
-}
-
-
 void gtk_widget_set_halign (GtkWidget *widget, GtkAlign align)
 {
     if (alignment_set_align (widget, align, "xalign") != -1) {
@@ -743,6 +700,20 @@ void gtk_widget_set_halign (GtkWidget *widget, GtkAlign align)
     if (GTK_IS_MISC(widget)) {
         misc_set_alignment (widget, align, TRUE);
         return;
+    }
+}
+
+void gtk_widget_set_hexpand (GtkWidget *widget, gboolean expand)
+{
+    if (expand == TRUE) {
+        alignment_set_align (widget, GTK_ALIGN_FILL, "xalign");
+    }
+}
+
+void gtk_widget_set_vexpand (GtkWidget *widget, gboolean expand)
+{
+    if (expand == TRUE) {
+        alignment_set_align (widget, GTK_ALIGN_FILL, "yalign");
     }
 }
 
@@ -759,7 +730,9 @@ void gtk_widget_set_valign (GtkWidget *widget, GtkAlign align)
 
 void gtk_widget_set_margin_start  (GtkWidget *widget, gint margin)
 {
-    if (alignment_set_padding (widget, margin, "left-padding") != -1) {
+    GtkWidget *alignment = w_gtk_widget_get_walignment (widget, FALSE);;
+    if (alignment) {
+        g_object_set (G_OBJECT(alignment), "left-padding", margin, NULL);
         return;
     }
     if (GTK_IS_MISC(widget)) {
@@ -770,18 +743,25 @@ void gtk_widget_set_margin_start  (GtkWidget *widget, gint margin)
 
 void gtk_widget_set_margin_end (GtkWidget *widget, gint margin)
 {
-    alignment_set_padding (widget, margin, "right-padding");
+    GtkWidget *alignment = w_gtk_widget_get_walignment (widget, FALSE);;
+    if (alignment) {
+        g_object_set (G_OBJECT(alignment), "right-padding", margin, NULL);
+    }
 }
 
 void gtk_widget_set_margin_bottom (GtkWidget *widget, gint margin)
 {
-    alignment_set_padding (widget, margin, "bottom-padding");
+    GtkWidget *alignment = w_gtk_widget_get_walignment (widget, FALSE);;
+    if (alignment) {
+        g_object_set (G_OBJECT(alignment), "bottom-padding", margin, NULL);
+    }
 }
 
 void gtk_widget_set_margin_top (GtkWidget *widget, gint margin)
 {
-    if (alignment_set_padding (widget, margin, "top-padding") != -1) {
-        return;
+    GtkWidget *alignment = w_gtk_widget_get_walignment (widget, FALSE);;
+    if (alignment) {
+        g_object_set (G_OBJECT(alignment), "top-padding", margin, NULL);
     }
     if (GTK_IS_MISC(widget)) {
         misc_set_padding (widget, margin, FALSE);
@@ -792,13 +772,33 @@ void gtk_widget_set_margin_top (GtkWidget *widget, gint margin)
 
 void gtk_grid_attach (GtkGrid *grid, GtkWidget *child, gint left, gint top, gint width, gint height)
 {
-    if (GTK_IS_ALIGNMENT(child)) {
-        gtk_table_attach (grid, child, left, left+width, top, top+height,
-                          GTK_EXPAND|GTK_FILL, GTK_EXPAND|GTK_FILL, 0, 0);
-    } else {
-        gtk_table_attach_defaults (grid, child, left, left+width, top, top+height);
+    // gtk_widget_set_*align / gtk_widget_set_*expand / gtk_widget_set_margin_*
+    //   will only work after gtk_grid_attach, calling them before has no effect...
+    int col = left+1;
+    int row = top+1;
+    guint rows;
+    guint cols;
+    gtk_table_get_size (GTK_TABLE(grid), &rows, &cols);
+    //printf ("%d-%d    %u-%u\n", col, row, cols, rows);
+    if (col > cols || row > rows) {
+        // the table needs to be bigger, resize (it should be created with 1_row 1_col)
+        //printf ("--resize  %u-%u\n", (col > cols) ? col : cols, (row > rows) ? row : rows);
+        gtk_table_resize (GTK_TABLE(grid),
+                          (row > rows) ? row : rows,
+                          (col > cols) ? col : cols);
     }
+    // attach widget with a GtkAlignment and enable emulation of
+    //   gtk_widget_set_halign, gtk_widget_set_valign, etc
+    GtkWidget *alignment;
+    alignment = w_gtk_widget_get_walignment (child, TRUE);
+    //if (GTK_IS_ALIGNMENT(child)) {
+        gtk_table_attach (grid, alignment, left, left+width, top, top+height,
+                          GTK_EXPAND|GTK_FILL, GTK_EXPAND|GTK_FILL, 0, 0);
+    //} else {
+    //    gtk_table_attach_defaults (grid, child, left, left+width, top, top+height);
+    //}
 }
+
 
 
 char *gtk_font_chooser_get_font (GtkFontChooser* fontchooser)
@@ -823,8 +823,50 @@ void gtk_font_chooser_set_font (GtkFontChooser *fontchooser, const char *fontnam
     } else if (GTK_IS_FONT_SELECTION_DIALOG(fontchooser)) {
         gtk_font_selection_dialog_set_font_name (GTK_FONT_SELECTION_DIALOG(fontchooser), fontname);
     } else if (GTK_IS_FONT_BUTTON(fontchooser)) {
+        // GtkFontButton is not deprecated in GTK3, it implements GtkFontChooser
+        //  in GTK2, GtkFontButton does not implement GtkFontSelection (publicly)
         gtk_font_button_set_font_name (GTK_FONT_BUTTON(fontchooser), fontname);
     }
+}
+
+void gtk_font_chooser_set_preview_text (GtkFontChooser *fontchooser, const char *text)
+{
+    if (GTK_IS_FONT_SELECTION(fontchooser)) {
+        gtk_font_selection_set_preview_text (GTK_FONT_SELECTION(fontchooser), text);
+    } else if (GTK_IS_FONT_SELECTION_DIALOG(fontchooser)) {
+        gtk_font_selection_dialog_set_preview_text (GTK_FONT_SELECTION_DIALOG(fontchooser), text);
+    }
+}
+
+char * gtk_font_chooser_get_preview_text (GtkFontChooser *fontchooser)
+{
+    const char * ptext;
+    if (GTK_IS_FONT_SELECTION(fontchooser)) {
+        ptext = gtk_font_selection_get_preview_text (GTK_FONT_SELECTION(fontchooser), text);
+    } else if (GTK_IS_FONT_SELECTION_DIALOG(fontchooser)) {
+        ptext = gtk_font_selection_dialog_get_preview_text (GTK_FONT_SELECTION_DIALOG(fontchooser), text);
+    }
+    return g_strdup(ptext); // must be freed
+}
+
+PangoFontFace * gtk_font_chooser_get_font_face (GtkFontChooser *fontchooser)
+{
+    return gtk_font_selection_get_face (GTK_FONT_SELECTION(fontchooser));
+}
+
+PangoFontFamily * gtk_font_chooser_get_font_family (GtkFontChooser *fontchooser)
+{
+    return gtk_font_selection_get_family (GTK_FONT_SELECTION(fontchooser));
+}
+
+int gtk_font_chooser_get_font_size (GtkFontChooser *fontchooser)
+{
+    return gtk_font_selection_get_size (GTK_FONT_SELECTION(fontchooser));
+}
+
+GtkWidget* gtk_font_chooser_widget_new (void)
+{
+    return gtk_font_selection_new ();
 }
 
 #endif
@@ -888,4 +930,15 @@ gboolean gtk_combo_box_get_has_entry (GtkComboBox *combo_box)
     }
 }
 
+#endif
+
+#if !GTK_CHECK_VERSION(2, 22, 0)
+gboolean gtk_widget_send_focus_change (GtkWidget *widget, GdkEvent *event)
+{
+    g_object_ref (widget);
+    GTK_OBJECT_FLAGS (widget) |= GTK_HAS_FOCUS;
+    gtk_widget_event (widget, event);
+    g_object_notify (G_OBJECT (widget), "has-focus");
+    g_object_unref (widget);
+}
 #endif

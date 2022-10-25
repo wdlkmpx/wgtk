@@ -4,3 +4,5 @@ config.sh
 config.mk
 lib/w_gtk_menu
 lib/w_gtk_menu2
+*.a
+*.so
