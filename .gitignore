@@ -6,3 +6,7 @@ lib/w_gtk_menu
 lib/w_gtk_menu2
 *.a
 *.so
+*.o
+w_gtk_combo_example
+w_gtk_menu_example
+w_gtk_menu_example2

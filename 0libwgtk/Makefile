@@ -3,7 +3,7 @@ include ../config.mk
 LIB_STATIC = libwgtk.a
 
 # ls *.c | sed "s%\.c%.o%g" | tr "\n" " " >> Makefile
-OBJS = w_gtk.o w_gtk_combo.o w_gtk_text_view.o
+OBJS = w_gtk.o w_gtk_combo.o w_gtk_text_view.o w_gtk_compat2.o
 
 #CPPFLAGS += -I..
 CFLAGS += -I..

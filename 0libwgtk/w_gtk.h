@@ -17,6 +17,7 @@ extern "C"
 
 #define W_GTK 1
 #include "gtkcompat.h"
+#include "w_gtk_compat2.h"
 
 struct _WGtkActionEntry 
 {
@@ -45,12 +46,15 @@ GtkWidget * w_gtk_dialog_new (const char * title,
                               GtkWidget ** main_vbox); /* out */
 
 GtkWidget * w_gtk_frame_new (char * label, /* supports markup */
+                             gboolean center_label,
                              GtkWidget * parent_box,
                              GtkWidget * label_widget);
+
 GtkWidget * w_gtk_frame_vbox_new (char * label, /* supports markup */
                                   int children_spacing,
                                   GtkWidget * parent_box,
                                   GtkWidget * frame_label_widget); /* NULL */
+
 GtkWidget * w_gtk_expander_vbox_new (char * label,
                                      int children_spacing,
                                      GtkWidget * parent_box);
@@ -60,6 +64,7 @@ GtkWidget * w_gtk_button_new (const char * label, /* supports markup if not usin
                               gpointer clicked_cb,
                               gpointer cdata);
 
+GtkWidget * w_gtk_toolbar_separator_new  (GtkWidget *box_toolbar);
 GtkWidget * w_gtk_toolbar_button_new (GtkWidget *box_toolbar,
                                       const char *label, /* DOES NOT support markup */
                                       const char *tooltip,
@@ -88,21 +93,37 @@ void w_gtk_tree_view_deselect_all (GtkWidget *tv);
 void w_gtk_tree_view_select_row (GtkWidget *tv, int n);
 int w_gtk_tree_view_get_selection_index (GtkWidget *tv);
 
-void w_gtk_combo_box_populate_from_glist (GtkWidget *combo, GList *strings, int default_index);
-void w_gtk_combo_box_populate_from_strv (GtkWidget *combo,
+// ==================================================================
+// w_gtk_combo.h
+
+GtkWidget * w_gtk_combo_new ();
+GtkWidget * w_gtk_combo_new_with_entry ();
+GtkWidget * w_gtk_combo_get_entry (GtkWidget *combo);
+int  w_gtk_combo_get_count (GtkWidget *combo);
+void w_gtk_combo_clear (GtkWidget *combo);
+int  w_gtk_combo_get_count (GtkWidget *combo);
+gboolean w_gtk_combo_find_str (GtkWidget *combo, const char *str, gboolean select);
+
+void w_gtk_combo_set_enable_entry (GtkWidget *combo, gboolean enabled);
+void w_gtk_combo_set_entry_text (GtkWidget *combo, const char *text);
+void w_gtk_combo_insert_text (GtkWidget *combo, int position, const char *text);
+void w_gtk_combo_append_text (GtkWidget *combo, const char *text);
+void w_gtk_combo_prepend_text (GtkWidget *combo, const char *text);
+void w_gtk_combo_remove_index (GtkWidget *combo, int position);
+char *w_gtk_combo_get_active_text (GtkWidget *combo);
+
+int  w_gtk_combo_get_active_index (GtkWidget *combo);
+void w_gtk_combo_set_active_index (GtkWidget *combo, int index);
+//--
+void w_gtk_combo_populate_from_glist (GtkWidget *combo, GList *strings, int default_index);
+void w_gtk_combo_populate_from_strv (GtkWidget *combo,
                                          const char **strv,
                                          int default_index,
                                          gboolean gettext);
-int w_gtk_combo_box_get_count (GtkWidget *combo);
-void w_gtk_combo_box_find_and_select (GtkWidget *combo, char *str);
-gboolean w_gtk_combo_box_find_str (GtkWidget *combo,
-                                   const char *str,
-                                   gboolean select,
-                                   GtkTreeIter *out_iter);
-void w_gtk_combo_box_select_or_prepend (GtkWidget *combo, const char *str);
-void w_gtk_combo_box_set_w_model (GtkWidget *combo, gboolean sort);
+void w_gtk_combo_select_or_prepend (GtkWidget *combo, const char *str);
+void w_gtk_combo_set_w_model (GtkWidget *combo, gboolean sort);
 
-// =================================================
+// ==================================================================
 
 #if GTK_MAJOR_VERSION <= 2
 void gtk_widget_set_hexpand (GtkWidget *widget, gboolean expand);

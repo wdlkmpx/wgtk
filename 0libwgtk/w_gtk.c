@@ -72,7 +72,7 @@ GtkWidget * w_gtk_window_new (const char * title,
     return window;
 }
 
-/*
+
 GtkWidget * w_gtk_window_add_main_vbox (GtkWidget *window)
 { // returns a GtkBox
     GtkWidget * main_vbox = NULL;
@@ -88,7 +88,7 @@ GtkWidget * w_gtk_window_add_main_vbox (GtkWidget *window)
     }
     return main_vbox;
 }
-*/
+
 
 GtkWidget * w_gtk_dialog_new (const char * title,
                               GtkWindow * parent,
@@ -130,6 +130,7 @@ GtkWidget * w_gtk_dialog_new (const char * title,
 
 
 GtkWidget * w_gtk_frame_new (char * label, /* supports markup */
+                             gboolean center_label,
                              GtkWidget * parent_box,
                              GtkWidget * label_widget)
 {  // returns a GtkFrame
@@ -146,6 +147,11 @@ GtkWidget * w_gtk_frame_new (char * label, /* supports markup */
         gtk_frame_set_label_widget (GTK_FRAME (frame), frame_label);
         gtk_label_set_use_markup (GTK_LABEL (frame_label), TRUE);
     }
+    if (center_label) {
+        gtk_frame_set_label_align (GTK_FRAME(frame), 0.5, 0.5);
+    }
+    // this doesn't work with gtk3+
+    //gtk_frame_set_shadow_type (GTK_FRAME(frame), GTK_SHADOW_IN);
     gtk_widget_show (frame);
     if (frame_label) gtk_widget_show (frame_label);
     return frame;
@@ -160,10 +166,9 @@ GtkWidget * w_gtk_frame_vbox_new (char * label, /* supports markup */
     // returns a vbox inside a frame
     GtkWidget * frame;
     GtkWidget * frame_vbox;
-    frame      = w_gtk_frame_new (label, parent_box, frame_label_widget);
+    frame      = w_gtk_frame_new (label, FALSE, parent_box, frame_label_widget);
     frame_vbox = gtk_box_new (GTK_ORIENTATION_VERTICAL, children_spacing);
     gtk_container_add (GTK_CONTAINER (frame), frame_vbox);
-    //gtk_frame_set_shadow_type (GTK_FRAME(frame), GTK_SHADOW_IN);
     /* padding */
     gtk_container_set_border_width (GTK_CONTAINER (frame_vbox), 5);
     return frame_vbox;
@@ -298,6 +303,37 @@ void w_gtk_button_flat (GtkWidget * button, gboolean reduce_size)
 }
 
 
+GtkWidget * w_gtk_toolbar_new  (GtkOrientation ori, GtkWidget *parent_box)
+{
+    GtkWidget *toolbar;
+    toolbar = gtk_box_new (ori, 5);
+    g_object_set_data (G_OBJECT(toolbar), "wgtktoolbar", toolbar);
+    if (parent_box) {
+        gtk_box_pack_start (GTK_BOX (parent_box), toolbar, FALSE, FALSE, 0);
+    }
+    return toolbar;
+}
+
+GtkWidget * w_gtk_toolbar_separator_new  (GtkWidget *box_toolbar)
+{
+    GtkWidget *sep;
+    GtkOrientation orientation = GTK_ORIENTATION_VERTICAL;
+    if (box_toolbar) {
+#if GTK_CHECK_VERSION(2,16,0) // GtkOrientable appears in Gtk 2.16
+        orientation = gtk_orientable_get_orientation (GTK_ORIENTABLE(box_toolbar));
+#else
+        if (GTK_IS_HBOX(box_toolbar) {
+            orientation = GTK_ORIENTATION_HORIZONTAL;
+        }
+#endif
+    }
+    sep = gtk_separator_new (orientation);
+    if (box_toolbar) {
+        gtk_box_pack_start (GTK_BOX(box_toolbar), sep, FALSE, FALSE, 0);
+    }
+    return sep;
+}
+
 GtkWidget * w_gtk_toolbar_button_new (GtkWidget *box_toolbar,
                                       const char *label, /* DOES NOT support markup */
                                       const char *tooltip,
@@ -339,7 +375,8 @@ GtkWidget * w_gtk_button_new_from_actions (WGtkActionEntry *actions,
                                            const char *action_name,
                                            GtkWidget *toolbar)
 {  // check if action_name is in the action group
-    GtkWidget *button;
+    GtkWidget *button = NULL;
+    ///GtkWidget *toolbar = NULL;
     int found = 0;
     int i;
     for (i = 0; actions[i].name; i++)
@@ -353,6 +390,9 @@ GtkWidget * w_gtk_button_new_from_actions (WGtkActionEntry *actions,
         printf ("not found: %s\n", action_name);
         return NULL; // action_name not found
     }
+    ///if (box_parent) {
+    ///    toolbar = g_object_get_data (box_parent, "wgtktoolbar");
+    ///}
     if (toolbar) {
         button = w_gtk_toolbar_button_new (toolbar,
                                            actions[i].label,
@@ -365,6 +405,7 @@ GtkWidget * w_gtk_button_new_from_actions (WGtkActionEntry *actions,
                                    actions[i].icon_name,
                                    actions[i].callback, NULL);
     }
+
     return button;
 }
 
@@ -587,6 +628,49 @@ int w_gtk_tree_view_get_selection_index (GtkWidget *tv)
     }
     return index;
 }
+
+
+/* ================================================== */
+/*                   menus ....                       */
+/* ================================================== */
+
+GtkWidget * w_gtk_recent_menu_new (const char * application,
+                                   gpointer activated_cb)
+{
+    GtkRecentFilter *recent_filter;
+    GtkWidget *recent_menu;
+    recent_filter = gtk_recent_filter_new ();
+    recent_menu   = gtk_recent_chooser_menu_new ();
+    gtk_recent_filter_add_application (recent_filter, application);
+    gtk_recent_chooser_add_filter (GTK_RECENT_CHOOSER(recent_menu), recent_filter);
+    gtk_recent_chooser_set_show_tips (GTK_RECENT_CHOOSER(recent_menu), TRUE);
+    gtk_recent_chooser_set_sort_type (GTK_RECENT_CHOOSER(recent_menu), GTK_RECENT_SORT_MRU);
+    gtk_recent_chooser_set_local_only (GTK_RECENT_CHOOSER(recent_menu), FALSE);
+    if (activated_cb) {
+        g_signal_connect(G_OBJECT(recent_menu),
+                         "item-activated", G_CALLBACK(activated_cb), NULL);
+    }
+    return recent_menu;
+}
+
+void w_gtk_action_group_destroy_action (GtkActionGroup *action_group,
+                                        const char *action_name)
+{
+    GtkAction * action;
+    GSList * widget;
+    action = gtk_action_group_get_action (action_group, action_name);
+    if (action) {
+        gtk_action_group_remove_action (action_group, action);
+        widget = gtk_action_get_proxies (action);
+        while (widget)
+        {
+            gtk_widget_destroy (GTK_WIDGET(widget->data));
+            widget = widget->next;
+        }
+        g_object_unref (action);
+    }
+}
+
 
 
 /* ================================================== */
@@ -840,13 +924,17 @@ void gtk_font_chooser_set_preview_text (GtkFontChooser *fontchooser, const char 
 
 char * gtk_font_chooser_get_preview_text (GtkFontChooser *fontchooser)
 {
-    const char * ptext;
+    const char * ptext = NULL;
     if (GTK_IS_FONT_SELECTION(fontchooser)) {
-        ptext = gtk_font_selection_get_preview_text (GTK_FONT_SELECTION(fontchooser), text);
+        ptext = gtk_font_selection_get_preview_text (GTK_FONT_SELECTION(fontchooser));
     } else if (GTK_IS_FONT_SELECTION_DIALOG(fontchooser)) {
-        ptext = gtk_font_selection_dialog_get_preview_text (GTK_FONT_SELECTION_DIALOG(fontchooser), text);
+        ptext = gtk_font_selection_dialog_get_preview_text (GTK_FONT_SELECTION_DIALOG(fontchooser));
     }
-    return g_strdup(ptext); // must be freed
+    if (ptext) {
+        return g_strdup(ptext); // must be freed
+    } else {
+        return NULL;
+    }
 }
 
 PangoFontFace * gtk_font_chooser_get_font_face (GtkFontChooser *fontchooser)
@@ -871,74 +959,3 @@ GtkWidget* gtk_font_chooser_widget_new (void)
 
 #endif
 
-
-/* ================================================== */
-/*                   menus ....                       */
-/* ================================================== */
-
-GtkWidget * w_gtk_recent_menu_new (const char * application,
-                                   gpointer activated_cb)
-{
-    GtkRecentFilter *recent_filter;
-    GtkWidget *recent_menu;
-    recent_filter = gtk_recent_filter_new ();
-    recent_menu   = gtk_recent_chooser_menu_new ();
-    gtk_recent_filter_add_application (recent_filter, application);
-    gtk_recent_chooser_add_filter (GTK_RECENT_CHOOSER(recent_menu), recent_filter);
-    gtk_recent_chooser_set_show_tips (GTK_RECENT_CHOOSER(recent_menu), TRUE);
-    gtk_recent_chooser_set_sort_type (GTK_RECENT_CHOOSER(recent_menu), GTK_RECENT_SORT_MRU);
-    gtk_recent_chooser_set_local_only (GTK_RECENT_CHOOSER(recent_menu), FALSE);
-    if (activated_cb) {
-        g_signal_connect(G_OBJECT(recent_menu),
-                         "item-activated", G_CALLBACK(activated_cb), NULL);
-    }
-    return recent_menu;
-}
-
-void w_gtk_action_group_destroy_action (GtkActionGroup *action_group,
-                                        const char *action_name)
-{
-    GtkAction * action;
-    GSList * widget;
-    action = gtk_action_group_get_action (action_group, action_name);
-    if (action) {
-        gtk_action_group_remove_action (action_group, action);
-        widget = gtk_action_get_proxies (action);
-        while (widget)
-        {
-            gtk_widget_destroy (GTK_WIDGET(widget->data));
-            widget = widget->next;
-        }
-        g_object_unref (action);
-    }
-}
-
-/* ================================================== */
-/*                   GTK < 2.24                       */
-/* ================================================== */
-
-#if !GTK_CHECK_VERSION(2, 24, 0)
-
-gboolean gtk_combo_box_get_has_entry (GtkComboBox *combo_box)
-{
-    GtkWidget *child;
-    child = gtk_bin_get_child (GTK_BIN(combo_box));
-    if (child && GTK_IS_ENTRY(child)) {
-        return TRUE;
-    } else {
-        return FALSE;
-    }
-}
-
-#endif
-
-#if !GTK_CHECK_VERSION(2, 22, 0)
-gboolean gtk_widget_send_focus_change (GtkWidget *widget, GdkEvent *event)
-{
-    g_object_ref (widget);
-    GTK_OBJECT_FLAGS (widget) |= GTK_HAS_FOCUS;
-    gtk_widget_event (widget, event);
-    g_object_notify (G_OBJECT (widget), "has-focus");
-    g_object_unref (widget);
-}
-#endif

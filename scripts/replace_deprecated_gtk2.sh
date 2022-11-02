@@ -382,6 +382,14 @@ sed -i \
 -e 's%gtk_combo_box_get_active_text(GTK_COMBO_BOX%gtk_combo_box_text_get_active_text (GTK_COMBO_BOX_TEXT%g' \
 -e 's%gtk_combo_box_get_active_text (GTK_COMBO_BOX%gtk_combo_box_text_get_active_text (GTK_COMBO_BOX_TEXT%g' \
 -e 's%gtk_combo_box_get_active_text ( GTK_COMBO_BOX%gtk_combo_box_text_get_active_text (GTK_COMBO_BOX_TEXT%g' \
+-e 's%gtk_combo_box_entry_set_text_column(GTK_COMBO_BOX_ENTRY%gtk_combo_box_set_entry_text_column (GTK_COMBO_BOX%g' \
+-e 's%gtk_combo_box_entry_set_text_column (GTK_COMBO_BOX_ENTRY%gtk_combo_box_set_entry_text_column (GTK_COMBO_BOX%g' \
+-e 's%gtk_combo_box_entry_set_text_column ( GTK_COMBO_BOX_ENTRY%gtk_combo_box_set_entry_text_column (GTK_COMBO_BOX%g' \
+-e 's%gtk_combo_box_entry_set_text_column%gtk_combo_box_set_entry_text_column%g' \
+-e 's%gtk_combo_box_entry_get_text_column(GTK_COMBO_BOX_ENTRY%gtk_combo_box_get_entry_text_column (GTK_COMBO_BOX%g' \
+-e 's%gtk_combo_box_entry_get_text_column (GTK_COMBO_BOX_ENTRY%gtk_combo_box_get_entry_text_column (GTK_COMBO_BOX%g' \
+-e 's%gtk_combo_box_entry_get_text_column ( GTK_COMBO_BOX_ENTRY%gtk_combo_box_get_entry_text_column (GTK_COMBO_BOX%g' \
+-e 's%gtk_combo_box_entry_get_text_column%gtk_combo_box_get_entry_text_column%g' \
 ${target}
 
 }

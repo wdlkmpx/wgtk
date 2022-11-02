@@ -1,8 +1,13 @@
 #include <stdio.h>
 #include <string.h>
 
+// This app requires GtkApplication, hard dependency...
+// gtk2 support can be added later...
+
 #define  USE_GTK_APPLICATION
 #include "w_gtk_menu.h"
+
+#if GTK_CHECK_VERSION(3,0,0)
 
 // gcc -o zw_gtk_menu2 w_gtk_menu.c zw_gtk_menu_example2.c -g `pkg-config --cflags gtk+-3.0` `pkg-config --libs gtk+-3.0` -Wall
 
@@ -338,4 +343,9 @@ int main (int argc, char **argv)
     return status;
 }
 
-
+#else
+int main (int argc, char **argv)
+{
+    return 0;
+}
+#endif

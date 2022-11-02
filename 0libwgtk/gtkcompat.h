@@ -7,6 +7,8 @@
 /*
  * gtkcompat.h, GTK2+ compatibility layer
  * 
+ * see w_gtk_compat2.h for extended gtk2.24 compatibility (for older versions than 2.24)
+ * 
  * This lib makes it easier to support older GTK versions
  * while still avoiding deprecated functions as much as possible.
  * 
@@ -298,24 +300,7 @@ typedef enum /* GtkAlign */
 
 // GTK < 2.24
 #if GTK_MINOR_VERSION < 24
-typedef struct _GtkComboBox        GtkComboBoxText;
-typedef struct _GtkComboBoxClass   GtkComboBoxTextClass;
-typedef struct _GtkComboBoxPrivate GtkComboBoxTextPrivate;
-#define GTK_TYPE_COMBO_BOX_TEXT            (gtk_combo_box_get_type ())
-#define GTK_COMBO_BOX_TEXT(obj)            (G_TYPE_CHECK_INSTANCE_CAST ((obj), GTK_TYPE_COMBO_BOX, GtkComboBoxText))
-#define GTK_COMBO_BOX_TEXT_CLASS(klass)    (G_TYPE_CHECK_CLASS_CAST ((klass), GTK_TYPE_COMBO_BOX, GtkComboBoxTextClass))
-#define GTK_IS_COMBO_BOX_TEXT(obj)         (G_TYPE_CHECK_INSTANCE_TYPE ((obj), GTK_TYPE_COMBO_BOX))
-#define GTK_IS_COMBO_BOX_TEXT_CLASS(klass) (G_TYPE_CHECK_CLASS_TYPE ((klass), GTK_TYPE_COMBO_BOX))
-#define GTK_COMBO_BOX_TEXT_GET_CLASS(obj)  (G_TYPE_INSTANCE_GET_CLASS ((obj), GTK_TYPE_COMBO_BOX, GtkComboBoxTextClass))
-#define gtk_combo_box_text_new()            gtk_combo_box_new_text()
-#define gtk_combo_box_text_new_with_entry()	gtk_combo_box_entry_new_text()
-#define gtk_combo_box_text_append_text(combo,text)     gtk_combo_box_append_text(combo,text)
-#define gtk_combo_box_text_insert_text(combo,pos,text) gtk_combo_box_insert_text(combo,pos,text)
-#define gtk_combo_box_text_prepend_text(combo,text)    gtk_combo_box_prepend_text(combo,text)
-#define gtk_combo_box_text_remove(combo,pos)           gtk_combo_box_remove_text(combo,pos)
-#define gtk_combo_box_text_get_active_text(combo)      (gtk_combo_box_get_active_text(combo))
-#define gtk_combo_box_set_entry_text_column(combo,cl)
-#define gtk_combo_box_get_entry_text_column(combo) (0)
+
 #define gtk_range_get_round_digits(range) (GTK_RANGE(range)->round_digits)
 //#define gdk_window_get_visual(w)  (gdk_drawable_get_visual(GDK_DRAWABLE(w)))
 #define gdk_window_get_screen(w)  (gdk_drawable_get_screen(GDK_DRAWABLE(w)))
@@ -323,7 +308,6 @@ typedef struct _GtkComboBoxPrivate GtkComboBoxTextPrivate;
 #define gtk_notebook_get_group_name gtk_notebook_get_group
 #define gtk_notebook_set_group_name gtk_notebook_set_group
 #endif
-
 
 // GTK < 2.22
 #if GTK_MINOR_VERSION < 22
@@ -415,9 +399,9 @@ typedef struct _GtkComboBoxPrivate GtkComboBoxTextPrivate;
 
 // GTK < 2.16
 #if GTK_MINOR_VERSION < 16
-#define gtk_menu_item_get_label(i) (gtk_label_get_label (GTK_LABEL (GTK_BIN (i)->child)))
+#define gtk_menu_item_get_label(i) (gtk_label_get_label (GTK_LABEL(GTK_BIN(i)->child)))
 #define gtk_menu_item_set_label(i,label) gtk_label_set_label(GTK_LABEL(GTK_BIN(i)->child), (label) ? label : "")
-#define gtk_menu_item_get_use_underline(i) (gtk_label_get_use_underline (GTK_LABEL (GTK_BIN (i)->child)))
+#define gtk_menu_item_get_use_underline(i) (gtk_label_get_use_underline (GTK_LABEL(GTK_BIN(i)->child)))
 #define gtk_status_icon_set_tooltip_text gtk_status_icon_set_tooltip
 #endif
 
