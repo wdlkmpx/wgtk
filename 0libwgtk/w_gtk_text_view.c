@@ -7,6 +7,7 @@
 #include <string.h>
 #include <ctype.h>
 
+#if GTK_CHECK_VERSION(2,0,0)
 
 void w_gtk_text_view_append (GtkWidget *tw, const char *tag, char *str)
 {
@@ -478,3 +479,5 @@ void EditorTextTabify (GtkTextView *tw, int tabify, int tabsize)
     }
 }
 */
+
+#endif

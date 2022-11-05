@@ -26,10 +26,10 @@
 
 
 // GLIB >= 2.36
-#if GLIB_CHECK_VERSION (2, 36, 0)
-#undef g_type_init
-#define g_type_init 0
-#endif
+//#if GLIB_CHECK_VERSION (2, 36, 0)
+//#undef g_type_init
+//#define g_type_init 0
+//#endif
 
 
 // GLIB < 2.36
@@ -121,7 +121,6 @@
 
 /* glib 2.18+ tested */
 
-/*
 #if ! GLIB_CHECK_VERSION(2, 10, 0)
 #define g_slice_alloc(size)      g_malloc(size)
 #define g_slice_alloc0(size)     g_malloc0(size)
@@ -130,6 +129,5 @@
 #define g_slice_free(type, mem)  g_free(mem)
 #define g_slice_free1(size, mem) g_free(mem)
 #endif
-*/
 
 #endif /* __GLIB_COMPAT_H */

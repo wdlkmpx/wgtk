@@ -135,6 +135,7 @@ GtkWidget * w_gtk_frame_new (char * label, /* supports markup */
                              GtkWidget * label_widget)
 {  // returns a GtkFrame
     GtkWidget * frame       = NULL;
+#if GTK_CHECK_VERSION(2,0,0)
     GtkWidget * frame_label = NULL;
     frame = gtk_frame_new (NULL);
     gtk_box_pack_start (GTK_BOX (parent_box), frame, FALSE, FALSE, 0);
@@ -146,14 +147,18 @@ GtkWidget * w_gtk_frame_new (char * label, /* supports markup */
         frame_label = gtk_label_new (label);
         gtk_frame_set_label_widget (GTK_FRAME (frame), frame_label);
         gtk_label_set_use_markup (GTK_LABEL (frame_label), TRUE);
+        if (frame_label) gtk_widget_show (frame_label);
     }
+#else // GTK1 doesn't support specifying a label widget // TODO: remove markup
+	frame = gtk_frame_new (label);
+    gtk_box_pack_start (GTK_BOX (parent_box), frame, FALSE, FALSE, 0);
+#endif
     if (center_label) {
         gtk_frame_set_label_align (GTK_FRAME(frame), 0.5, 0.5);
     }
     // this doesn't work with gtk3+
     //gtk_frame_set_shadow_type (GTK_FRAME(frame), GTK_SHADOW_IN);
     gtk_widget_show (frame);
-    if (frame_label) gtk_widget_show (frame_label);
     return frame;
 }
 
@@ -179,11 +184,15 @@ GtkWidget * w_gtk_expander_vbox_new (char * label,
                                      int children_spacing,
                                      GtkWidget * parent_box)
 {
-    // returns a vbox inside a frame
+    // returns a vbox inside a gtkexpander
     GtkWidget* expander;
     GtkWidget* hiddenbox;
-
+#if GTK_CHECK_VERSION(2,4,0)
     expander = gtk_expander_new (label);
+#else
+	// too old, use a frame instead...
+	expander = gtk_frame_new (label);
+#endif
     if (parent_box) {
         gtk_box_pack_start (GTK_BOX (parent_box), expander, FALSE, FALSE, 0);
     }
@@ -198,6 +207,7 @@ GtkWidget * w_gtk_expander_vbox_new (char * label,
 
 GtkWidget * w_gtk_image_new_from_icon_name (const char *icon_name, GtkIconSize size)
 {
+#if GTK_CHECK_VERSION(2,4,0) // GtkIconTheme was introduced in gtk 2.4
     GtkWidget *img = NULL;
     GtkIconTheme *icon_theme = gtk_icon_theme_get_default ();
     if (gtk_icon_theme_has_icon (icon_theme, icon_name)) {
@@ -210,11 +220,16 @@ GtkWidget * w_gtk_image_new_from_icon_name (const char *icon_name, GtkIconSize s
         img = gtk_image_new_from_icon_name (icon_name, size);
     }
     return img;
+#else
+    return NULL;
+#endif
+
 }
 
 
 void w_gtk_image_set_from_icon_name (GtkImage *img, const char *icon_name, GtkIconSize size)
 {
+#if GTK_CHECK_VERSION(2,4,0) // GtkIconTheme was introduced in gtk 2.4
     if (!img) {
         return;
     }
@@ -228,14 +243,17 @@ void w_gtk_image_set_from_icon_name (GtkImage *img, const char *icon_name, GtkIc
         fprintf (stderr, "(GtkImage-set) %s was not found in icon theme\n", icon_name);
         gtk_image_set_from_icon_name (img, icon_name, size);
     }
+#endif
 }
 
 
 void w_gtk_button_set_icon_name (GtkButton *button, const char *icon_name)
 {
+#if GTK_CHECK_VERSION(2,0,0) // GTK1 doesn't support pixbufs
     GtkWidget *img;
     img = w_gtk_image_new_from_icon_name (icon_name, GTK_ICON_SIZE_BUTTON);
     gtk_button_set_image (button, img);
+#endif
 }
 
 
@@ -292,7 +310,7 @@ void w_gtk_button_flat (GtkWidget * button, gboolean reduce_size)
     gtk_widget_set_can_focus (GTK_WIDGET(button), FALSE);
     gtk_widget_set_can_default (button, FALSE);
     if (reduce_size) {
-#if GTK_MAJOR_VERSION <= 2
+#if GTK_MAJOR_VERSION == 2 // this only works with gtk2, no other version
         /* Make the button as small as possible. */
         GtkRcStyle * rcstyle = gtk_rc_style_new();
         rcstyle->xthickness = rcstyle->ythickness = 0;
@@ -314,18 +332,13 @@ GtkWidget * w_gtk_toolbar_new  (GtkOrientation ori, GtkWidget *parent_box)
     return toolbar;
 }
 
+
 GtkWidget * w_gtk_toolbar_separator_new  (GtkWidget *box_toolbar)
 {
     GtkWidget *sep;
     GtkOrientation orientation = GTK_ORIENTATION_VERTICAL;
     if (box_toolbar) {
-#if GTK_CHECK_VERSION(2,16,0) // GtkOrientable appears in Gtk 2.16
         orientation = gtk_orientable_get_orientation (GTK_ORIENTABLE(box_toolbar));
-#else
-        if (GTK_IS_HBOX(box_toolbar) {
-            orientation = GTK_ORIENTATION_HORIZONTAL;
-        }
-#endif
     }
     sep = gtk_separator_new (orientation);
     if (box_toolbar) {
@@ -333,6 +346,7 @@ GtkWidget * w_gtk_toolbar_separator_new  (GtkWidget *box_toolbar)
     }
     return sep;
 }
+
 
 GtkWidget * w_gtk_toolbar_button_new (GtkWidget *box_toolbar,
                                       const char *label, /* DOES NOT support markup */
@@ -555,6 +569,8 @@ void w_gtk_widget_change_tooltip (GtkWidget *widget, const char *new_text)
 /*                  TREE VIEW                         */
 /* ================================================== */
 
+#if GTK_CHECK_VERSION(2,0,0)
+
 int w_gtk_tree_view_get_num_selected (GtkWidget *tv)
 {
     GtkTreeView      *tree = GTK_TREE_VIEW (tv);
@@ -629,6 +645,7 @@ int w_gtk_tree_view_get_selection_index (GtkWidget *tv)
     return index;
 }
 
+#endif
 
 /* ================================================== */
 /*                   menus ....                       */
@@ -637,6 +654,7 @@ int w_gtk_tree_view_get_selection_index (GtkWidget *tv)
 GtkWidget * w_gtk_recent_menu_new (const char * application,
                                    gpointer activated_cb)
 {
+#if GTK_CHECK_VERSION(2,10,0) // GktRecentFilter was added in gtk 2.10
     GtkRecentFilter *recent_filter;
     GtkWidget *recent_menu;
     recent_filter = gtk_recent_filter_new ();
@@ -651,8 +669,13 @@ GtkWidget * w_gtk_recent_menu_new (const char * application,
                          "item-activated", G_CALLBACK(activated_cb), NULL);
     }
     return recent_menu;
+#else
+	return gtk_menu_new ();
+#endif
 }
 
+
+#if GTK_CHECK_VERSION(2,4,0) // GtkAction was added in gtk 2.4
 void w_gtk_action_group_destroy_action (GtkActionGroup *action_group,
                                         const char *action_name)
 {
@@ -670,7 +693,7 @@ void w_gtk_action_group_destroy_action (GtkActionGroup *action_group,
         g_object_unref (action);
     }
 }
-
+#endif
 
 
 /* ================================================== */
@@ -892,9 +915,11 @@ char *gtk_font_chooser_get_font (GtkFontChooser* fontchooser)
         ret = gtk_font_selection_get_font_name (GTK_FONT_SELECTION(fontchooser));
     } else if (GTK_IS_FONT_SELECTION_DIALOG(fontchooser)) {
         ret = gtk_font_selection_dialog_get_font_name (GTK_FONT_SELECTION_DIALOG(fontchooser));
+#if GTK_CHECK_VERSION(2,4,0) // GtkFontButton appears in 2.4
     } else if (GTK_IS_FONT_BUTTON(fontchooser)) {
         // returns an internal copy of the font name, strdup
         ret = g_strdup (gtk_font_button_get_font_name (GTK_FONT_BUTTON(fontchooser)));
+#endif
     }
     return ret;
 }
@@ -906,10 +931,12 @@ void gtk_font_chooser_set_font (GtkFontChooser *fontchooser, const char *fontnam
         gtk_font_selection_set_font_name (GTK_FONT_SELECTION(fontchooser), fontname);
     } else if (GTK_IS_FONT_SELECTION_DIALOG(fontchooser)) {
         gtk_font_selection_dialog_set_font_name (GTK_FONT_SELECTION_DIALOG(fontchooser), fontname);
+#if GTK_CHECK_VERSION(2,4,0) // GtkFontButton appears in 2.4
     } else if (GTK_IS_FONT_BUTTON(fontchooser)) {
         // GtkFontButton is not deprecated in GTK3, it implements GtkFontChooser
         //  in GTK2, GtkFontButton does not implement GtkFontSelection (publicly)
         gtk_font_button_set_font_name (GTK_FONT_BUTTON(fontchooser), fontname);
+#endif
     }
 }
 
@@ -937,6 +964,9 @@ char * gtk_font_chooser_get_preview_text (GtkFontChooser *fontchooser)
     }
 }
 
+//https://developer-old.gnome.org/gtk2/stable/GtkFontSelection.html
+// 2.14: GtkFontSelection adopts Pango
+#if GTK_CHECK_VERSION(2,14,0)
 PangoFontFace * gtk_font_chooser_get_font_face (GtkFontChooser *fontchooser)
 {
     return gtk_font_selection_get_face (GTK_FONT_SELECTION(fontchooser));
@@ -956,6 +986,7 @@ GtkWidget* gtk_font_chooser_widget_new (void)
 {
     return gtk_font_selection_new ();
 }
+#endif // Pango
 
-#endif
+#endif /*   GTK < 3.0  */
 

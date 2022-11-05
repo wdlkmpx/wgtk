@@ -7,10 +7,7 @@
 /*
  * gtkcompat.h, GTK2+ compatibility layer
  * 
- * see w_gtk_compat2.h for extended gtk2.24 compatibility (for older versions than 2.24)
- * 
- * This lib makes it easier to support older GTK versions
- * while still avoiding deprecated functions as much as possible.
+ * see w_gtk_compat2.h for extended gtk2.24 compatibility (for versions older than 2.24)
  * 
  * The older the GTK version, the more compatible functions are "defined"
  * so it's not wise to use the compiled binary in newer distros or something.
@@ -25,100 +22,8 @@ extern "C"
 {
 #endif
 
+#include "glib-compat.h"
 #include <gtk/gtk.h>
-
-/* ================================================== */
-/*                      GLIB                          */
-/* ================================================== */
-
-#ifndef __GLIB_COMPAT_H
-#define __GLIB_COMPAT_H
-
-#include <glib.h>
-
-// GLIB < 2.58
-#if ! GLIB_CHECK_VERSION (2, 58, 0)
-#define G_SOURCE_FUNC(f) ((GSourceFunc) (void (*)(void)) (f))
-#endif
-
-
-// GLIB < 2.40
-#if ! GLIB_CHECK_VERSION (2, 40, 0)
-#define g_key_file_save_to_file(kfile,filename,error) { \
-   char * xdatax = g_key_file_to_data (kfile, NULL, error); \
-   g_file_set_contents (filename, xdatax, -1, error); \
-   g_free (xdatax); \
-}
-#endif
-
-
-// GLIB < 2.32
-#if ! GLIB_CHECK_VERSION (2, 32, 0)
-#define G_SOURCE_REMOVE   FALSE
-#define G_SOURCE_CONTINUE TRUE
-#define GRecMutex              GStaticRecMutex
-#define g_rec_mutex_init(x)    g_static_rec_mutex_init(x)
-#define g_rec_mutex_lock(x)    g_static_rec_mutex_lock(x)
-#define g_rec_mutex_trylock(x) g_static_rec_mutex_trylock(x)
-#define g_rec_mutex_unlock(x)  g_static_rec_mutex_unlock(x)
-#define g_rec_mutex_clear(x)   g_static_rec_mutex_free(x)
-#define g_thread_new(name,func,data) g_thread_create(func,data,TRUE,NULL)
-#define g_thread_try_new(name,func,data,error) g_thread_create(func,data,TRUE,error)
-#define g_hash_table_add(ht,key)      g_hash_table_replace(ht,key,key)
-#define g_hash_table_contains(ht,key) g_hash_table_lookup_extended(ht,key,NULL,NULL)
-#endif
-
-
-// GMutex vs GStaticMutex
-#if GLIB_CHECK_VERSION (2, 32, 0)
-// since version 2.32.0 GMutex can be statically allocated
-// don't use WGMutex to replace GMutex * ... issues, errors.
-#	define WGMutex GMutex
-#	define Wg_mutex_init    g_mutex_init
-#	define Wg_mutex_lock    g_mutex_lock
-#	define Wg_mutex_trylock g_mutex_trylock
-#	define Wg_mutex_unlock  g_mutex_unlock
-#	define Wg_mutex_clear   g_mutex_clear
-#else
-#	define WGMutex GStaticMutex
-#	define Wg_mutex_init    g_static_mutex_init
-#	define Wg_mutex_lock    g_static_mutex_lock
-#	define Wg_mutex_trylock g_static_mutex_trylock
-#	define Wg_mutex_unlock  g_static_mutex_unlock
-#	define Wg_mutex_clear   g_static_mutex_free
-// sed -i 's%g_mutex_%Wg_mutex_%g' $(grep "g_mutex_" *.c *.h | cut -f 1 -d ":" | grep -v -E 'gtkcompat|glib-compat' | sort -u)
-#endif
-
-
-// GLIB < 2.30
-#if ! GLIB_CHECK_VERSION (2, 30, 0)
-#define g_format_size g_format_size_for_display
-#endif
-
-
-// GLIB < 2.28
-#if ! GLIB_CHECK_VERSION (2, 28, 0)
-#define g_list_free_full(list,free_func) {\
-     g_list_foreach (list, (GFunc) free_func, NULL);\
-     g_list_free (list);\
-}
-#endif
-
-
-// GLIB < 2.22
-#if ! GLIB_CHECK_VERSION (2, 22, 0)
-#define g_mapped_file_unref(x) g_mapped_file_free(x)
-#endif
-
-// GLIB < 2.20
-#if ! GLIB_CHECK_VERSION (2, 20, 0)
-#define g_app_info_get_commandline(app) g_app_info_get_executable(app)
-#endif
-
-/* glib 2.18+ tested */
-
-#endif /* __GLIB_COMPAT_H */
-
 
 /* ================================================== */
 /*                     GDK KEYS                       */
@@ -183,10 +88,29 @@ extern "C"
 #endif
 
 // GTK < 3.12
-#if GTK_MINOR_VERSION < 12
-#define gtk_application_set_accels_for_action(app,name,accels)   gtk_application_add_accelerator(app,accels[0],name,NULL)
+#if GTK_MINOR_VERSION < 12 
 #define gtk_widget_set_margin_start(widget,margin) gtk_widget_set_margin_left(widget,margin)
 #define gtk_widget_set_margin_end(widget,margin)   gtk_widget_set_margin_right(widget,margin)
+#if GTK_MINOR_VERSION >= 4
+#define gtk_application_set_accels_for_action(app,name,accels)   gtk_application_add_accelerator(app,accels[0],name,NULL)
+#endif
+#endif
+
+// GTK < 3.8
+#if GTK_MINOR_VERSION < 8
+#define gtk_widget_set_opacity(w,o) gtk_window_set_opacity(GTK_WINDOW(w),o)
+#define gtk_widget_get_opacity(w)  (gtk_window_get_opacity(GTK_WINDOW(w))
+#endif
+
+// GTK < 3.6
+#if GTK_MINOR_VERSION < 6
+#define gtk_button_set_always_show_image(button,show)
+#endif
+
+// GTK < 3.4
+#if GTK_MINOR_VERSION < 4
+#define gtk_application_window_new(app) gtk_window_new(GTK_WINDOW_TOPLEVEL)
+#define gtk_entry_set_placeholder_text(entry,text)
 #endif
 
 #endif /* ------- GTK3 ------- */
@@ -194,10 +118,10 @@ extern "C"
 
 
 /* ================================================== */
-/*                       GTK 2                        */
+/*         GTK3 compat with GTK 2/1                   */
 /* ================================================== */
 
-#if GTK_MAJOR_VERSION == 2
+#if GTK_MAJOR_VERSION <= 2
 
 // GTK < 3.22
 #define gtk_scrolled_window_set_propagate_natural_height(sw,propagate)
@@ -296,140 +220,14 @@ typedef enum /* GtkAlign */
 #define G_APPLICATION(app) ((void *) (app))
 //-
 #define gdk_error_trap_pop_ignored gdk_error_trap_pop
-
-
-// GTK < 2.24
-#if GTK_MINOR_VERSION < 24
-
-#define gtk_range_get_round_digits(range) (GTK_RANGE(range)->round_digits)
-//#define gdk_window_get_visual(w)  (gdk_drawable_get_visual(GDK_DRAWABLE(w)))
-#define gdk_window_get_screen(w)  (gdk_drawable_get_screen(GDK_DRAWABLE(w)))
-#define gdk_window_get_display(w) (gdk_drawable_get_display(GDK_DRAWABLE(w)))
-#define gtk_notebook_get_group_name gtk_notebook_get_group
-#define gtk_notebook_set_group_name gtk_notebook_set_group
-#endif
-
-// GTK < 2.22
-#if GTK_MINOR_VERSION < 22
-#define gtk_statusbar_remove_all gtk_statusbar_pop
-#define gtk_accessible_get_widget(a) ((a)->widget)
-#define gtk_window_has_group(w) (GTK_WINDOW(w)->group != NULL)
-#define gtk_window_group_get_current_grab(wg) \
-  ((GTK_WINDOW_GROUP(wg)->grabs) ? GTK_WIDGET(GTK_WINDOW_GROUP(wg)->grabs->data) : NULL)
-#define gtk_font_selection_dialog_get_font_selection(fsd)(GTK_FONT_SELECTION_DIALOG(fsd)->fontsel)
-#define gtk_notebook_get_tab_hborder(n) (GTK_NOTEBOOK(n)->tab_hborder)
-#define gtk_notebook_get_tab_vborder(n) (GTK_NOTEBOOK(n)->tab_vborder)
-#define gtk_button_get_event_window(button) (GTK_BUTTON(button)->event_window)
-#define gdk_visual_get_visual_type(visual) (GDK_VISUAL(visual)->type)
-#define gdk_visual_get_depth(visual) (GDK_VISUAL(visual)->depth)
-#define gdk_visual_get_byte_order(visual) (GDK_VISUAL(visual)->byte_order)
-#define gdk_visual_get_colormap_size(visual) (GDK_VISUAL(visual)->colormap_size)
-#define gdk_visual_get_bits_per_rgb(visual) (GDK_VISUAL(visual)->bits_per_rgb)
-#define gtk_icon_view_get_item_orientation gtk_icon_view_get_orientation
-#define gtk_icon_view_set_item_orientation gtk_icon_view_set_orientation
-#define gdk_window_create_similar_surface(gdksurf,content,width,height) ({ \
-   cairo_t * wcr = gdk_cairo_create (gdksurf); \
-   cairo_surface_t * window_surface = cairo_get_target (wcr); \
-   cairo_surface_t * out_s = cairo_surface_create_similar (window_surface, content, width, height); \
-   cairo_destroy (wcr); \
-   out_s; \
-})
-#endif
-
-
-// GTK < 2.20
-#if GTK_MINOR_VERSION < 20
-#define gtk_statusbar_get_message_area(sb) (gtk_bin_get_child (GTK_BIN (GTK_STATUSBAR(sb)->frame)))
-#define gtk_widget_get_mapped(wid) ((GTK_WIDGET_FLAGS (wid) & GTK_MAPPED) != 0)
-#define gtk_widget_get_realized(wid) ((GTK_WIDGET_FLAGS (wid) & GTK_REALIZED) != 0)
-#define gtk_window_get_window_type(window) (GTK_WINDOW(window)->type)
-#define gtk_widget_get_requisition(w,r) (*(r) = GTK_WIDGET(w)->requisition)
-#define gtk_widget_set_mapped(w,yes) { \
-   if (yes) GTK_WIDGET_SET_FLAGS(w,GTK_MAPPED); \
-   else GTK_WIDGET_UNSET_FLAGS(w,GTK_MAPPED); \
-}
-#define gtk_widget_set_realized(w,yes) { \
-   if (yes) GTK_WIDGET_SET_FLAGS(w,GTK_REALIZED); \
-   else GTK_WIDGET_UNSET_FLAGS(w,GTK_REALIZED); \
-}
-#define gtk_range_get_slider_size_fixed(range) (GTK_RANGE(range)->slider_size_fixed)
-#define gtk_range_get_min_slider_size(range) (GTK_RANGE(range)->min_slider_size)
-#define gtk_entry_get_text_window(entry) (GTK_ENTRY(entry)->text_area)
-#endif
-
-
-// GTK < 2.18
-#if GTK_MINOR_VERSION < 18
-#define gtk_widget_get_state(wid) (GTK_WIDGET (wid)->state)
-#define gtk_widget_is_toplevel(wid) ((GTK_WIDGET_FLAGS (wid) & GTK_TOPLEVEL) != 0)
-#define gtk_widget_get_has_window(wid) !((GTK_WIDGET_FLAGS (wid) & GTK_NO_WINDOW) != 0)
-#define gtk_widget_get_visible(wid) ((GTK_WIDGET_FLAGS (wid) & GTK_VISIBLE) != 0)
-#define gtk_widget_is_drawable(wid)  (GTK_WIDGET_VISIBLE (wid) && GTK_WIDGET_MAPPED (wid))
-#define gtk_widget_get_sensitive(wid) ((GTK_WIDGET_FLAGS (wid) & GTK_SENSITIVE) != 0)
-#define gtk_widget_get_can_focus(wid) ((GTK_WIDGET_FLAGS (wid) & GTK_CAN_FOCUS) != 0)
-#define gtk_widget_has_focus(wid) ((GTK_WIDGET_FLAGS (wid) & GTK_HAS_FOCUS) != 0)
-#define gtk_widget_get_can_default(wid) ((GTK_WIDGET_FLAGS (wid) & GTK_CAN_DEFAULT) != 0)
-#define gtk_widget_get_receives_default(wid) ((GTK_WIDGET_FLAGS (wid) & GTK_RECEIVES_DEFAULT) != 0)
-#define gtk_widget_has_default(wid) ((GTK_WIDGET_FLAGS (wid) & GTK_HAS_DEFAULT) != 0)
-#define gtk_widget_has_grab(wid) ((GTK_WIDGET_FLAGS (wid) & GTK_HAS_GRAB) != 0)
-#define gtk_widget_get_app_paintable(wid) ((GTK_WIDGET_FLAGS (wid) & GTK_APP_PAINTABLE) != 0)
-#define gtk_widget_get_double_buffered(wid) ((GTK_WIDGET_FLAGS (wid) & GTK_DOUBLE_BUFFERED) != 0)
-#define gtk_widget_set_allocation(w,alloc) (GTK_WIDGET(w)->allocation = *(alloc))
-#define gtk_widget_get_allocation(w,alloc) (*(alloc) = GTK_WIDGET(w)->allocation)
-#define gtk_widget_set_can_default(w,yes) { \
-   if (yes) GTK_WIDGET_SET_FLAGS(w,GTK_CAN_DEFAULT); \
-   else GTK_WIDGET_UNSET_FLAGS(w,GTK_CAN_DEFAULT); \
-}
-#define gtk_widget_set_can_focus(w,yes) { \
-   if (yes) GTK_WIDGET_SET_FLAGS(w,GTK_CAN_FOCUS); \
-   else GTK_WIDGET_UNSET_FLAGS(w,GTK_CAN_FOCUS); \
-}
-#define gtk_widget_set_has_window(w,yes) { \
-   if (yes) GTK_WIDGET_UNSET_FLAGS(w,GTK_NO_WINDOW); \
-   else GTK_WIDGET_SET_FLAGS(w,GTK_NO_WINDOW); \
-}
-#define gtk_widget_set_visible(w,yes) { \
-   if (yes) gtk_widget_show(w); \
-   else gtk_widget_hide(w); \
-}
-#define gtk_range_get_flippable(range) (GTK_RANGE(range)->flippable)
-#define gdk_window_is_destroyed(w) (GDK_WINDOW_DESTROYED (GDK_WINDOW(w)))
-#endif
-
-
-// GTK < 2.16
-#if GTK_MINOR_VERSION < 16
-#define gtk_menu_item_get_label(i) (gtk_label_get_label (GTK_LABEL(GTK_BIN(i)->child)))
-#define gtk_menu_item_set_label(i,label) gtk_label_set_label(GTK_LABEL(GTK_BIN(i)->child), (label) ? label : "")
-#define gtk_menu_item_get_use_underline(i) (gtk_label_get_use_underline (GTK_LABEL(GTK_BIN(i)->child)))
-#define gtk_status_icon_set_tooltip_text gtk_status_icon_set_tooltip
-#endif
-
-
-// GTK < 2.14
-#if GTK_MINOR_VERSION < 14
-#define gtk_dialog_get_action_area(dialog)    (GTK_DIALOG(dialog)->action_area)
-#define gtk_dialog_get_content_area(dialog)   (GTK_DIALOG(dialog)->vbox)
-#define gtk_widget_get_window(widget)         (GTK_WIDGET(widget)->window)
-#define gtk_window_get_default_widget(window) (GTK_WINDOW(window)->default_widget)
-#define gtk_menu_item_get_accel_path(i)       (GTK_MENU_ITEM(i)->accel_path)
-#define gtk_menu_get_accel_path(menu)         (GTK_MENU(menu)->accel_path)
-#define gtk_message_dialog_get_image(m)       (GTK_MESSAGE_DIALOG(m)->image)
-#define gtk_entry_get_overwrite_mode(e)       (GTK_ENTRY(e)->overwrite_mode)
-// ---
-#define gtk_adjustment_set_page_increment(a,val) ((a)->page_increment = (val))
-#define gtk_adjustment_get_page_size(a)       ((a)->page_size)
-#define gtk_adjustment_get_lower(a)           ((a)->lower)
-#define gtk_adjustment_get_upper(a)           ((a)->upper) // GTK_ADJUSTMENT
-#define gtk_selection_data_get_length(data)   ((data)->length)
-#endif
-
-
 #endif /* ------- GTK2 ------- */
+
+
 
 // ===================================================
 
 // CAIRO < 1.10
+#ifdef CAIRO_VERSION
 #if CAIRO_VERSION < CAIRO_VERSION_ENCODE(1, 10, 0)
 #define cairo_region_t         GdkRegion
 #define cairo_rectangle_int_t  GdkRectangle
@@ -450,11 +248,14 @@ typedef enum /* GtkAlign */
 #define cairo_region_xor       gdk_region_xor
 //#define cairo_region_num_rectangles / cairo_region_get_rectangle  gdk_region_get_rectangles
 #endif
+#endif
 
 
 // PANGO
+#ifdef PANGO_VERSION
 #ifndef PANGO_WEIGHT_MEDIUM
 #define PANGO_WEIGHT_MEDIUM 500
+#endif
 #endif
 
 

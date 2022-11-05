@@ -1,6 +1,7 @@
 include ../config.mk
 
 APPS  = w_gtk_combo_example w_gtk_menu_example w_gtk_menu_example2
+#APPS  = w_gtk_combo_example
 
 WGTK = ../0libwgtk
 WGTK_CFLAGS = -I../0libwgtk

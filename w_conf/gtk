@@ -1,6 +1,5 @@
 #!/bin/sh
-# This is free and unencumbered software released into the public domain.
-# For more information, please refer to <http://unlicense.org/>
+# * Public Domain *
 
 # set W_GTK_IS_OPTIONAL=yes to make GTK optional
 # and show (--disable-gtk) in --help msg
@@ -64,6 +63,8 @@ opt_configure_gtk()
 		W_GTK_DEFAULT_VERSION=3 # default to GTK3
 	fi
 
+	enable_gtk1=no
+
 	case $W_GTK_DEFAULT_VERSION in
 		2) # hasn't been ported to GTK3 yet...
 			enable_gtk4='no'
@@ -91,6 +92,12 @@ opt_configure_gtk()
 	for i in $@
 	do
 		case $i in
+		--enable-gtk1) # special case, uses gtk-config
+			enable_gtk2='no'
+			enable_gtk3='no'
+			enable_gtk4='no'
+			enable_gtk1='yes'
+			;;
 		--enable-gtk2)
 			enable_gtk3='no'
 			enable_gtk4='no'
@@ -129,7 +136,7 @@ opt_configure_gtk()
 	done
 
 	if [ "$W_GTK_IS_OPTIONAL" != "yes" ] ; then
-		if [ "$enable_gtk2" = "no" ] && [ "$enable_gtk3" = "no" ] && [ "$enable_gtk4" = "no" ] ; then
+		if [ "$enable_gtk1" = "no" ] && [ "$enable_gtk2" = "no" ] && [ "$enable_gtk3" = "no" ] && [ "$enable_gtk4" = "no" ] ; then
 			exit_error "GTK has been disabled but it's required... ERROR"
 		fi
 	fi
@@ -143,7 +150,7 @@ opt_check_gtk()
 		return
 	fi
 
-	if [ "$enable_gtk2" = "no" ] && [ "$enable_gtk3" = "no" ] && [ "$enable_gtk4" = "no" ] ; then
+	if [ "$enable_gtk1" = "no" ] && [ "$enable_gtk2" = "no" ] && [ "$enable_gtk3" = "no" ] && [ "$enable_gtk4" = "no" ] ; then
 		return
 	fi
 
@@ -199,12 +206,21 @@ GTK_LIBS = ${GTK_LIBS}"
 		fi
 	fi
 
-	if [ -z "$gtkpc" ] ; then
-		exit_error "ERROR: GTK was not found"
+	if [ "$enable_gtk1" = "yes" ] ; then
+		# special case
+		GTK_CFLAGS=$(gtk-config --cflags gtk)
+		if [ -z "$GTK_CFLAGS" ] ; then
+			exit_error "ERROR: GTK1 was not found"
+		fi
+		GTK_LIBS=$(gtk-config --libs gtk)
+        gtkpc=gtk1
+	else
+		if [ -z "$gtkpc" ] ; then
+			exit_error "ERROR: GTK was not found"
+		fi
+		GTK_CFLAGS=$(run_pkg_config ${gtkpc} --cflags 2>/dev/null)
+		GTK_LIBS=$(run_pkg_config ${gtkpc} --libs 2>/dev/null)
 	fi
-
-	GTK_CFLAGS=$(run_pkg_config ${gtkpc} --cflags 2>/dev/null)
-	GTK_LIBS=$(run_pkg_config ${gtkpc} --libs 2>/dev/null)
 
 	# disabling deprecated gtk only makes sense if GTK is going to be compiled
 	# so make it part of GTK_CFLAGS
@@ -248,16 +264,25 @@ opt_check_gtk_only_version()
 		echo "Checking for GTK... $GTK_CFLAGS/$GTK_LIBS"
 	else
 		case $W_GTK_ONLY_VERSION in
+			1) gtkpc=gtk1 ;;
 			2) gtkpc=gtk+-2.0 ;;
 			3) gtkpc=gtk+-3.0 ;;
 			4) gtkpc=gtk4 ;;
 			*) exit_error "Invalid value for \$W_GTK_ONLY_VERSION : $W_GTK_ONLY_VERSION" ;;
 		esac
-		if ! w_pkgconfig_check ${gtkpc} ${W_GTK_MIN_VERSION} ; then
-			if [ "$enable_gtk" = "yes" ] ; then
-				exit_error "pkg-config: gtk was not found"
+		if [ $W_GTK_ONLY_VERSION -eq 1 ] ; then #gtk1 uses gtk-config
+			GTK_CFLAGS=$(gtk-config --cflags gtk)
+			if [ -z "$GTK_CFLAGS" ] ; then
+				exit_error "ERROR: GTK1 was not found"
 			fi
-		fi
+			GTK_LIBS=$(gtk-config --libs gtk)
+		else
+			if ! w_pkgconfig_check ${gtkpc} ${W_GTK_MIN_VERSION} ; then
+				if [ "$enable_gtk" = "yes" ] ; then
+					exit_error "pkg-config: GTK${W_GTK_ONLY_VERSION} was not found"
+				fi
+			fi
+        fi
 		#--
 		GTK_CFLAGS=$(run_pkg_config ${gtkpc} --cflags 2>/dev/null)
 		GTK_LIBS=$(run_pkg_config ${gtkpc} --libs 2>/dev/null)

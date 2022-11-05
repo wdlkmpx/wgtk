@@ -6,8 +6,10 @@
  By default it works with GtkMenu stuff, define one of these macros
  before including this header to change the behavior:
   
- #define USE_GTK_ACTION 1      - use GtkAction
- #define USE_GTK_APPLICATION 1 - use GMenu, GtkApplication, etc
+ #define USE_GTK_ACTION 1      - (GTK2.4+) use GtkAction
+ #define USE_GTK_APPLICATION 1 - (GTK3.0+) use GMenu, GtkApplication, etc
+ 
+ GtkMenu works with GTK 1/2/3
  
  (HOWTO: see some of the apps using this for more details...)
  */
@@ -37,10 +39,23 @@
 #define gettext(x) (x)
 #endif
 
+#ifdef USE_GTK_APPLICATION
+#if GTK_MAJOR_VERSION < 3
+#error "w_gtk_menu: with GTK_APPLICATION requires GTK3+"
+#endif
+#endif
+
+#ifdef USE_GTK_ACTION
+#if !GTK_CHECK_VERSION(2,4,0)
+#error "w_gtk_menu: GtkAction requires gtk 2.4+"
+#endif
+#endif
+
+
 // ==============================================================
 // w_gtk_menu.h
 
-#ifdef USE_GTK_APPLICATION
+#if defined(USE_GTK_APPLICATION) && GTK_CHECK_VERSION(3,0,0)
 
 #define WGtkMenuBar  GMenu
 #define WGtkMenu     GMenu
@@ -80,9 +95,10 @@ typedef struct _WGtkMenuItemParams
 
 #define WGtkMenuBar  GtkWidget
 #define WGtkMenu     GtkWidget
-#ifdef USE_GTK_ACTION
+#if defined(USE_GTK_ACTION) && GTK_CHECK_VERSION(2,4,0)
 #define WGtkMenuItem GtkAction
 #else
+#define GtkActionGroup void
 #define WGtkMenuItem GtkMenuItem
 #endif
 #define WGTK_MENU_ITEM GTK_MENU_ITEM
@@ -107,7 +123,7 @@ typedef struct _WGtkMenuItemParams
     const char * radio_group;
     const char * radio_id;
     const char * tooltip;
-//#ifdef USE_GTK_ACTION
+//#if defined(USE_GTK_ACTION) && GTK_CHECK_VERSION(2,4,0)
     GtkActionGroup * gtk_app;
     const char * action_name;
 //#endif
@@ -129,9 +145,9 @@ static void w_gtk_menu_item_params_init (WGtkMenuItemParams *params, WGtkActionE
 
 void w_gtk_menu_item_set_enabled (WGtkMenuItem *menuitem, gboolean enabled)
 {
-#if defined(USE_GTK_APPLICATION)
+#if defined(USE_GTK_APPLICATION) && GTK_CHECK_VERSION(3,0,0)
     g_simple_action_set_enabled (G_SIMPLE_ACTION(menuitem), enabled);
-#elif defined(USE_GTK_ACTION)
+#elif defined(USE_GTK_ACTION) && GTK_CHECK_VERSION(2,4,0)
     gtk_action_set_sensitive (GTK_ACTION(menuitem), enabled);
 #else
     gtk_widget_set_sensitive (GTK_WIDGET(menuitem), enabled);
@@ -141,11 +157,11 @@ void w_gtk_menu_item_set_enabled (WGtkMenuItem *menuitem, gboolean enabled)
 
 void w_gtk_menu_item_set_checked (WGtkMenuItem *menuitem, gboolean state)
 {
-#if defined(USE_GTK_APPLICATION)
+#if defined(USE_GTK_APPLICATION) && GTK_CHECK_VERSION(3,0,0)
     GVariant * xstate;
     xstate = g_variant_new_boolean (state);
     g_action_change_state (G_ACTION(menuitem), xstate);
-#elif defined(USE_GTK_ACTION)
+#elif defined(USE_GTK_ACTION) && GTK_CHECK_VERSION(2,4,0)
     gtk_toggle_action_set_active (GTK_TOGGLE_ACTION(menuitem), state);
 #else
     gtk_check_menu_item_set_active (GTK_CHECK_MENU_ITEM(menuitem), state);
@@ -156,11 +172,11 @@ void w_gtk_menu_item_set_checked (WGtkMenuItem *menuitem, gboolean state)
 gboolean w_gtk_menu_item_get_checked (WGtkMenuItem *menuitem)
 {
     gboolean ret;
-#if defined(USE_GTK_APPLICATION)
+#if defined(USE_GTK_APPLICATION) && GTK_CHECK_VERSION(3,0,0)
     GVariant * state;
     state = g_action_get_state (G_ACTION(menuitem));
     ret = g_variant_get_boolean (state);
-#elif defined(USE_GTK_ACTION)
+#elif defined(USE_GTK_ACTION) && GTK_CHECK_VERSION(2,4,0)
     ret = gtk_toggle_action_get_active (GTK_TOGGLE_ACTION(menuitem));
 #else
     ret = gtk_check_menu_item_get_active (GTK_CHECK_MENU_ITEM(menuitem));
@@ -206,6 +222,7 @@ static void menuitem_params_from_actions (WGtkMenuItemParams *params,
 }
 
 
+#if GTK_CHECK_VERSION(2,4,0) // GtkIconTheme was introduced in gtk 2.4
 static const char * get_valid_icon_name (const char *icon1, const char *icon2)
 {
     GtkIconTheme *icon_theme = gtk_icon_theme_get_default ();
@@ -225,6 +242,7 @@ static const char * get_valid_icon_name (const char *icon1, const char *icon2)
     }
     return NULL;
 }
+#endif
 
 
 static void menuitem_params_reset (WGtkMenuItemParams *params)
@@ -250,11 +268,13 @@ static void menuitem_params_reset (WGtkMenuItemParams *params)
     params->accel_path = NULL;
 }
 
-// ==============================================================
-// GtkApplication
-// --------------
 
-#if defined(USE_GTK_APPLICATION)
+
+//===================================================================================
+//                GMenu, GAction, GtkApplication, etc...
+//===================================================================================
+
+#if defined(USE_GTK_APPLICATION) && GTK_CHECK_VERSION(3,0,0)
 
 static GSimpleAction * new_action (GtkApplication * gtk_app,  /* required */
                                    const char * action_name,  /* required */
@@ -310,13 +330,15 @@ static GSimpleAction * new_action (GtkApplication * gtk_app,  /* required */
     g_action_map_add_action (amap, G_ACTION (action));
 
     if (accel_str) {
+#if GTK_CHECK_VERSION (3, 4, 0)
         char * detailed_action = g_strconcat ("app.", action_name, NULL);  // e.g: app.new
 #if GTK_CHECK_VERSION (3, 12, 0)
         const char * accels[] = { accel_str, NULL };
         gtk_application_set_accels_for_action (gtk_app, detailed_action, accels);
-        g_free (detailed_action);
-#else // 3.4-
+#else // 3.4+
         gtk_application_add_accelerator (gtk_app, accel_str, detailed_action, NULL);
+#endif
+        g_free (detailed_action);
 #endif
     }
     return action;
@@ -341,10 +363,13 @@ static GMenuItem * new_menuitem (GMenu * menuitem_parent,
         g_menu_item_set_attribute (mitem, "target", "s", menuitem_target);
     }
     if (menuitem_icon && *menuitem_icon) {
-        ///g_menu_item_set_attribute (mitem, "icon", "s", menuitem_icon);
+#if GLIB_CHECK_VERSION(2,38,0)
         GIcon * icon = g_themed_icon_new (menuitem_icon);
         g_menu_item_set_icon (mitem, icon);
         g_object_unref (icon);
+#else
+        g_menu_item_set_attribute (mitem, "icon", "s", menuitem_icon);
+#endif
     }
 
     if (menuitem_submenu) { // always add submenu before appending to parent menu
@@ -405,10 +430,11 @@ GSimpleAction * w_gtk_menu_item_new (WGtkMenuItemParams * params)
 }
 
 
-#elif defined(USE_GTK_ACTION)
-// ====================================================================
-// GtkAction
-// ---------
+//===================================================================================
+//                   GtkAction, GtkActionGroup, etc
+//===================================================================================
+
+#elif defined(USE_GTK_ACTION) && GTK_CHECK_VERSION(2,4,0)
 
 GtkAction * w_gtk_menu_item_new (WGtkMenuItemParams * params)
 {
@@ -528,15 +554,18 @@ GtkAction * w_gtk_menu_item_new (WGtkMenuItemParams * params)
 }
 
 
+//===================================================================================
+//                   GtkMenu, Gtk*MenuItem, GtkMenuBar
+//===================================================================================
+
 #else
-// ====================================================================
-// GtkMenu
-// -------
 
 GtkMenuItem * w_gtk_menu_item_new (WGtkMenuItemParams * params)
 {
     GtkWidget * item = NULL;
+#if GTK_CHECK_VERSION(2,0,0)
     GtkWidget *img;
+#endif
     void *tmp;
     GSList * list = NULL;
     if (!params->radio_group && params->radio_id) {
@@ -561,6 +590,7 @@ GtkMenuItem * w_gtk_menu_item_new (WGtkMenuItemParams * params)
             item = gtk_menu_item_new_with_mnemonic (params->label);
             break;
         case 1: /* image */
+#if GTK_CHECK_VERSION(2,0,0)
             item = gtk_image_menu_item_new_with_mnemonic (params->label);
             tmp = (void*) get_valid_icon_name (params->icon_name, params->icon_alt);
             if (tmp) {
@@ -569,6 +599,9 @@ GtkMenuItem * w_gtk_menu_item_new (WGtkMenuItemParams * params)
                 img = w_gtk_image_new_from_icon_name (params->icon_name, GTK_ICON_SIZE_MENU);
             }
             gtk_image_menu_item_set_image (GTK_IMAGE_MENU_ITEM (item), img);
+#else // gtk1 can't handle images other than pixmaps (xpm)
+			item = gtk_menu_item_new_with_label (params->label);
+#endif
             break;
         case 2: /* check */
             item = gtk_check_menu_item_new_with_mnemonic (params->label);
@@ -619,6 +652,31 @@ GtkMenuItem * w_gtk_menu_item_new (WGtkMenuItemParams * params)
                           G_CALLBACK (params->activate_cb),
                           params->cb_data ? params->cb_data : params->cb_data_all);
     }
+
+#if GTK_MAJOR_VERSION == 1
+    // gtk_*_menu_item_with_mnemonics don't exist in gtk1, they are wgtkcompat2 macros to *_menu_item_new_with_label
+    // weird way to mnemonics to gtk menu items...
+    // https://www.geany.org/manual/gtk/gtk-faq/x781.html / gtkitemfactory.c
+    if (params->label && strchr(params->label,'_'))
+    {
+        guint akey = gtk_label_parse_uline (GTK_LABEL(GTK_BIN(item)->child), params->label);
+        if (akey != GDK_VoidSymbol) {
+            if (GTK_IS_MENU_BAR (params->parent_menu)) {
+                if (!params->accel_group) {
+                    params->accel_group = gtk_accel_group_new ();
+                }
+                gtk_widget_add_accelerator (item, "activate_item",
+                                            params->accel_group,
+                                            akey, GDK_MOD1_MASK,   GTK_ACCEL_LOCKED);
+            }
+            if (GTK_IS_MENU (params->parent_menu)) {
+                gtk_widget_add_accelerator (item, "activate_item",
+                                            gtk_menu_ensure_uline_accel_group (GTK_MENU(params->parent_menu)),
+                                            akey, 0,   GTK_ACCEL_LOCKED);
+            }
+        }
+    }
+#endif
 
     if (params->accel_str)
     {

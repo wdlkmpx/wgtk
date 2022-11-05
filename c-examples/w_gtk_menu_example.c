@@ -129,7 +129,7 @@ static void on_menuitem_edit (void *menuitem, gpointer data)
     int active = FALSE;
     int index;
     char * id;
-#ifdef USE_GTK_ACTION
+#if defined(USE_GTK_ACTION) && GTK_CHECK_VERSION(2,4,0)
     const char * name;
     active = gtk_toggle_action_get_active (GTK_TOGGLE_ACTION(menuitem));
     if (active) {
@@ -156,7 +156,7 @@ static void on_menuitem_edit (void *menuitem, gpointer data)
 static void on_menuitem_show (void *menuitem, gpointer data)
 {
     gboolean active;
-#ifdef USE_GTK_ACTION
+#if defined(USE_GTK_ACTION) && GTK_CHECK_VERSION(2,4,0)
     active = gtk_toggle_action_get_active (GTK_TOGGLE_ACTION (menuitem));
     //gtk_action_set_visible   (GTK_ACTION (menuitem), FALSE);
     //gtk_action_set_sensitive (GTK_ACTION (menuitem), FALSE);
@@ -182,8 +182,10 @@ static GtkWidget * create_menu_bar (GtkWindow *window)
     GtkAccelGroup *accel_group = gtk_accel_group_new ();
     gtk_window_add_accel_group (GTK_WINDOW (window), accel_group);
 
-    GtkActionGroup * amap;
+    GtkActionGroup * amap = NULL;
+#if defined(USE_GTK_ACTION) && GTK_CHECK_VERSION(2,4,0)
     amap = gtk_action_group_new ("menu");
+#endif
 
     WGtkMenuItemParams menuitem;
     memset (&menuitem, 0, sizeof(menuitem));
@@ -331,7 +333,7 @@ void create_window (void)
    gtk_window_set_position (GTK_WINDOW (dialog), GTK_WIN_POS_CENTER_ALWAYS);
    gtk_widget_set_size_request (GTK_WIDGET (dialog), 200, 100);
 
-   gtk_window_set_title (GTK_WINDOW (dialog), "Getting directory listings");
+   gtk_window_set_title (GTK_WINDOW (dialog), "WGTKMENU TEST");
    gtk_window_set_position (GTK_WINDOW (dialog), GTK_WIN_POS_MOUSE);
 
    main_vbox = gtk_box_new (GTK_ORIENTATION_VERTICAL, 5);
@@ -383,5 +385,6 @@ int main (int argc, char *argv[])
 
    gtk_main ();
 #endif
+	return 0;
 }
 

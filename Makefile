@@ -1,5 +1,5 @@
 
-SUBDIRS = 0libwgtk
+SUBDIRS = 0libwgtk c-examples
 
 DISTCLEAN_FILES = 
 

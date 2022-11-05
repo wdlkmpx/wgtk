@@ -86,42 +86,74 @@ GtkWidget * w_gtk_notebook_add_tab_grid (GtkWidget * notebook, char * label_str)
 GtkWidget * w_gtk_notebook_add_tab_box (GtkWidget * notebook, char * label_str);
 void w_gtk_widget_change_tooltip (GtkWidget *widget, const char *new_text);
 
+#if GTK_CHECK_VERSION(2,0,0)
 int  w_gtk_tree_view_get_num_selected (GtkWidget *tv);
 void w_gtk_tree_view_clear (GtkWidget *tv);
 void w_gtk_tree_view_select_all (GtkWidget *tv);
 void w_gtk_tree_view_deselect_all (GtkWidget *tv);
 void w_gtk_tree_view_select_row (GtkWidget *tv, int n);
 int w_gtk_tree_view_get_selection_index (GtkWidget *tv);
+#endif
 
 // ==================================================================
-// w_gtk_combo.h
 
-GtkWidget * w_gtk_combo_new ();
-GtkWidget * w_gtk_combo_new_with_entry ();
-GtkWidget * w_gtk_combo_get_entry (GtkWidget *combo);
-int  w_gtk_combo_get_count (GtkWidget *combo);
-void w_gtk_combo_clear (GtkWidget *combo);
-int  w_gtk_combo_get_count (GtkWidget *combo);
-gboolean w_gtk_combo_find_str (GtkWidget *combo, const char *str, gboolean select);
+struct WGtkComboItem_
+{
+    int index;
+    char *text;
+    gpointer data;
+};
 
-void w_gtk_combo_set_enable_entry (GtkWidget *combo, gboolean enabled);
-void w_gtk_combo_set_entry_text (GtkWidget *combo, const char *text);
-void w_gtk_combo_insert_text (GtkWidget *combo, int position, const char *text);
-void w_gtk_combo_append_text (GtkWidget *combo, const char *text);
-void w_gtk_combo_prepend_text (GtkWidget *combo, const char *text);
-void w_gtk_combo_remove_index (GtkWidget *combo, int position);
-char *w_gtk_combo_get_active_text (GtkWidget *combo);
+typedef struct WGtkComboItem_ WGtkComboItem;
 
-int  w_gtk_combo_get_active_index (GtkWidget *combo);
-void w_gtk_combo_set_active_index (GtkWidget *combo, int index);
-//--
-void w_gtk_combo_populate_from_glist (GtkWidget *combo, GList *strings, int default_index);
-void w_gtk_combo_populate_from_strv (GtkWidget *combo,
-                                         const char **strv,
-                                         int default_index,
-                                         gboolean gettext);
-void w_gtk_combo_select_or_prepend (GtkWidget *combo, const char *str);
-void w_gtk_combo_set_w_model (GtkWidget *combo, gboolean sort);
+// ==================================================================
+// w_gtk_combobox.h
+
+GtkWidget * w_gtk_combobox_new ();
+GtkWidget * w_gtk_combobox_new_with_entry ();
+GtkWidget * w_gtk_combobox_get_entry (GtkWidget *combo);
+
+int w_gtk_combobox_add_changed_handler (GtkWidget *combo, gpointer cb, gpointer cb_data);
+GtkWidget *w_gtk_combobox_cb_ensure_combo (GtkWidget *widget);
+
+const char *w_gtk_combobox_get_entry_text (GtkWidget *combo);
+void w_gtk_combobox_set_enable_entry (GtkWidget *combo, gboolean enabled);
+void w_gtk_combobox_set_entry_text (GtkWidget *combo, const char *text);
+
+int  w_gtk_combobox_get_count (GtkWidget *combo);
+void w_gtk_combobox_clear (GtkWidget *combo);
+
+void w_gtk_combobox_insert (GtkWidget *combo, int position, const char *text, gpointer wdata);
+void w_gtk_combobox_append (GtkWidget *combo, const char *text, gpointer wdata);
+void w_gtk_combobox_prepend (GtkWidget *combo, const char *text, gpointer wdata);
+
+void w_gtk_combobox_insert_text (GtkWidget *combo, int position, const char *text);
+void w_gtk_combobox_append_text (GtkWidget *combo, const char *text);
+void w_gtk_combobox_prepend_text (GtkWidget *combo, const char *text);
+void w_gtk_combobox_remove (GtkWidget *combo, int position); // index
+
+void w_gtk_combobox_get_item (GtkWidget *combo, int position, WGtkComboItem *out_comboitem);
+char *w_gtk_combobox_get_item_text (GtkWidget *combo, int position);
+char *w_gtk_combobox_get_item_data (GtkWidget *combo, int position);
+
+int w_gtk_combobox_get_selected (GtkWidget *combo, WGtkComboItem *out_comboitem);
+char *w_gtk_combobox_get_active_text (GtkWidget *combo);
+int  w_gtk_combobox_get_active_index (GtkWidget *combo);
+void w_gtk_combobox_set_active_index (GtkWidget *combo, int index);
+
+int w_gtk_combobox_search_text (GtkWidget *combo, const char *str,
+                                gboolean select, void **out_data);
+int w_gtk_combobox_search_data (GtkWidget *combo, gpointer wdata, gboolean select);
+void w_gtk_combobox_set_search_case_insensitive (GtkWidget *combo, gboolean csensitive);
+gboolean w_gtk_combobox_get_search_case_insensitive (GtkWidget *combo);
+
+void w_gtk_combobox_populate_from_glist (GtkWidget *combo, GList *strings, int default_index);
+void w_gtk_combobox_populate_from_strv (GtkWidget *combo,
+                                        const char **strv,
+                                        int default_index,
+                                        gboolean gettext);
+void w_gtk_combobox_select_or_prepend (GtkWidget *combo, const char *str);
+void w_gtk_combo_box_set_w_model (GtkWidget *combo, gboolean sort);
 
 // ==================================================================
 
@@ -148,8 +180,11 @@ char *gtk_font_chooser_get_font (GtkFontChooser* fontchooser);
 void gtk_font_chooser_set_font (GtkFontChooser *fontchooser, const char *fontname);
 void gtk_font_chooser_set_preview_text (GtkFontChooser *fontchooser, const char *text);
 char * gtk_font_chooser_get_preview_text (GtkFontChooser *fontchooser);
+// 2.14: GtkFontSelection adopts Pango
+#if GTK_CHECK_VERSION(2,14,0)
 PangoFontFace * gtk_font_chooser_get_font_face (GtkFontChooser *fontchooser);
 PangoFontFamily * gtk_font_chooser_get_font_family (GtkFontChooser *fontchooser);
+#endif
 int gtk_font_chooser_get_font_size (GtkFontChooser *fontchooser);
 GtkWidget* gtk_font_chooser_widget_new (void);
 #define gtk_font_chooser_dialog_new(title,parent) (gtk_font_selection_dialog_new(title))
@@ -209,9 +244,13 @@ void w_gtk_grid_append_row (WGtkTableParams *t);
 #define w_gtk_table_append_row(WGtkTableParams) w_gtk_table_append_row(WGtkTableParams)
 
 GtkWidget  * w_gtk_recent_menu_new (const char * application, gpointer activated_cb);
+#if GTK_CHECK_VERSION(2,4,0)
 void w_gtk_action_group_destroy_action (GtkActionGroup *action_group, const char *action_name);
+#endif
 
 // =================================================
+
+#if GTK_CHECK_VERSION(2,0,0)
 
 void w_gtk_text_view_append (GtkWidget *tw, const char *tag, char *str);
 void w_gtk_text_view_scroll_to_end (GtkWidget *tw);
@@ -246,6 +285,8 @@ void EditorTextTitleCase (GtkTextView *tw);
 
 gchar *TextViewGetText (GtkTextView *tw);
 void TextViewSetText (GtkTextView *tw, gchar *text);
+
+#endif
 
 #ifdef __cplusplus
 }
