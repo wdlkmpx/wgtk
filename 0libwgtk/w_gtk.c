@@ -31,6 +31,65 @@ void w_gtk_check_version (int gtk_ver)
 }
 
 
+void w_gtk_widget_change_tooltip (GtkWidget *widget, const char *new_text)
+{ /* changes widget tooltip only if the new_text is different */
+    char *tip;
+    tip = gtk_widget_get_tooltip_text (widget);
+    if (!tip || g_strcmp0(tip,new_text) != 0) {
+        gtk_widget_set_tooltip_text (widget, new_text);
+    }
+    g_free (tip);
+}
+
+
+GtkWidget *w_gtk_widget_set_scrolled_window (GtkWidget *widget,
+                                             GtkWidget *parent_box)
+{
+    GtkWidget *scrollwin;
+    scrollwin = g_object_get_data (G_OBJECT(widget), "w_scrolled_window");
+    if (scrollwin) {
+        return scrollwin;
+    }
+    scrollwin = gtk_scrolled_window_new (NULL, NULL);
+    gtk_scrolled_window_set_policy (GTK_SCROLLED_WINDOW(scrollwin),
+                                    GTK_POLICY_AUTOMATIC,  // hscrollbar
+                                    GTK_POLICY_AUTOMATIC); // vscrollbar
+#if (GTK_MAJOR_VERSION == 2 || GTK_MAJOR_VERSION == 3)
+    gtk_scrolled_window_set_shadow_type (GTK_SCROLLED_WINDOW(scrollwin), GTK_SHADOW_IN);
+#endif
+    if (parent_box) {
+        gtk_box_pack_start (GTK_BOX(parent_box), scrollwin, TRUE, TRUE, 0);
+    }
+    g_object_set_data (G_OBJECT(widget), "w_scrolled_window", scrollwin);
+
+#if GTK_CHECK_VERSION(4,0,0)
+    // GTK4 removed GtkContainer
+    gtk_scrolled_window_set_child (GTK_SCROLLED_WINDOW(scrollwin), widget);
+#elif GTK_CHECK_VERSION(3,8,0)
+    // 3.8+: gtk_container_add() automatically adds a GtkViewPort
+    // if the child doesn't implement GtkScrollable
+    gtk_container_add (GTK_CONTAINER(scrollwin), widget);
+#elif GTK_CHECK_VERSION(3,0,0)
+    // 3.0+: GtkScrollable is an interface that is implemented by widgets with native scrolling
+    if (GTK_IS_SCROLLABLE(widget)) {
+        gtk_container_add (GTK_CONTAINER(scrollwin), widget);
+    } else {
+        gtk_scrolled_window_add_with_viewport (GTK_SCROLLED_WINDOW(scrollwin), widget);
+    }
+#else // GTK2 & 1
+    GtkWidgetClass *widget_class;
+    widget_class = GTK_WIDGET_GET_CLASS(widget);
+    if (widget_class->set_scroll_adjustments_signal) {
+        gtk_container_add (GTK_CONTAINER(scrollwin), widget);
+    } else {
+        gtk_scrolled_window_add_with_viewport (GTK_SCROLLED_WINDOW(scrollwin), widget);
+    }
+#endif
+    return scrollwin;
+}
+
+// =====================================================================
+
 GtkWidget * w_gtk_window_new (const char * title,
                               GtkWindow * parent,
                               GtkApplication * app, // NULL gtkcompat.h < 3 = `void * app`
@@ -553,18 +612,6 @@ void w_gtk_grid_append_row (WGtkTableParams *t)
     t->row = t->row + 1;
 }
 
-
-void w_gtk_widget_change_tooltip (GtkWidget *widget, const char *new_text)
-{ /* changes widget tooltip only if the new_text is different */
-    char *tip;
-    tip = gtk_widget_get_tooltip_text (widget);
-    if (!tip || g_strcmp0(tip,new_text) != 0) {
-        gtk_widget_set_tooltip_text (widget, new_text);
-    }
-    g_free (tip);
-}
-
-
 /* ================================================== */
 /*                  TREE VIEW                         */
 /* ================================================== */
@@ -617,32 +664,6 @@ void w_gtk_tree_view_select_row (GtkWidget *tv, int n)
     GtkTreePath      *tpath = gtk_tree_path_new_from_indices (n, -1);
     gtk_tree_selection_select_path (tsel, tpath);
     gtk_tree_path_free (tpath);
-}
-
-
-int w_gtk_tree_view_get_selection_index (GtkWidget *tv) 
-{
-    GtkTreeView      *tree  = GTK_TREE_VIEW(tv);
-    GtkTreeModel     *model = gtk_tree_view_get_model (tree); // a GtkListStore
-    GtkTreeSelection *tsel  = gtk_tree_view_get_selection (tree);
-    GtkTreeIter iter;
-    gboolean valid;
-    GtkTreePath *path;
-    char *pathstr;
-    int index = -1;
-    valid = gtk_tree_model_get_iter_first (model, &iter);
-    while (valid)
-    {
-        if (gtk_tree_selection_iter_is_selected(tsel, &iter)) {
-            path    = gtk_tree_model_get_path (model, &iter);
-            pathstr = gtk_tree_path_to_string (path);
-            index   = atoi (pathstr);
-            g_free (pathstr);
-            break;
-        }
-        valid = gtk_tree_model_iter_next (model, &iter);
-    }
-    return index;
 }
 
 #endif

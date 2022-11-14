@@ -34,6 +34,10 @@ typedef struct _WGtkActionEntry WGtkActionEntry;
 
 void w_gtk_check_version (int gtk_ver);
 
+void w_gtk_widget_change_tooltip (GtkWidget *widget, const char *new_text);
+GtkWidget *w_gtk_widget_set_scrolled_window (GtkWidget *widget,
+                                             GtkWidget *parent_box);
+
 GtkWidget * w_gtk_window_new (const char * title,
                               GtkWindow * parent,
                               GtkApplication * app, // NULL gtkcompat.h < 3 = `void * app`
@@ -84,7 +88,6 @@ void w_gtk_button_set_icon_name (GtkButton *button, const char *icon_name);
 
 GtkWidget * w_gtk_notebook_add_tab_grid (GtkWidget * notebook, char * label_str);
 GtkWidget * w_gtk_notebook_add_tab_box (GtkWidget * notebook, char * label_str);
-void w_gtk_widget_change_tooltip (GtkWidget *widget, const char *new_text);
 
 #if GTK_CHECK_VERSION(2,0,0)
 int  w_gtk_tree_view_get_num_selected (GtkWidget *tv);
@@ -92,7 +95,6 @@ void w_gtk_tree_view_clear (GtkWidget *tv);
 void w_gtk_tree_view_select_all (GtkWidget *tv);
 void w_gtk_tree_view_deselect_all (GtkWidget *tv);
 void w_gtk_tree_view_select_row (GtkWidget *tv, int n);
-int w_gtk_tree_view_get_selection_index (GtkWidget *tv);
 #endif
 
 // ==================================================================

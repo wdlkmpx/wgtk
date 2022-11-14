@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#define USE_GTK_ACTION 1
 #include "w_gtk_menu.h"
 
 // https://developer.gnome.org/gnome-devel-demos/stable/menubar.c.html.en
@@ -9,9 +10,6 @@
 // https://developer.gnome.org/gnome-devel-demos/stable/c.html.en
 // https://stackoverflow.com/questions/33911544/gtk3-gmenuitem-with-icon-alignment
 // https://wiki.gnome.org/HowDoI/GAction
-
-// gcc -o zw_gtk_menu w_gtk.c w_gtk_menu.c zw_gtk_menu_example.c -g `pkg-config --cflags gtk+-2.0` `pkg-config --libs gtk+-2.0` -Wall
-// gcc -o zw_gtk_menu w_gtk.c w_gtk_menu.c zw_gtk_menu_example.c -g `pkg-config --cflags gtk+-3.0` `pkg-config --libs gtk+-3.0` -Wall
 
 #define _(x) x
 
@@ -41,10 +39,9 @@ static void on_gtk_window_destroy (GtkWidget * object, gpointer udata)
     g_application_quit (G_APPLICATION (app));
 } 
 
-
 // ===============================================================================
 
-#if GTK_MAJOR_VERSION >= 3
+#if GTK_MAJOR_VERSION >= 3 //====== GTK3 ========
 
 static void on_menuitem_newfolder (GSimpleAction *act, GVariant *param, gpointer data) {
     fprintf (stderr, "new folder!\n");
@@ -65,7 +62,6 @@ static void on_menuitem_properties (GSimpleAction *act, GVariant *param, gpointe
 static void on_menuitem_close (GSimpleAction *act, GVariant *param, gpointer data) {
     fprintf (stderr, "close!\n");
 }
-
 
 static void create_menu_bar (GtkWindow *window)
 {
@@ -105,27 +101,42 @@ static void create_menu_bar (GtkWindow *window)
 
 #else // ============= GTK2 ==============
 
-static void on_menuitem_newfolder (GtkMenuItem *menuitem, gpointer data) {
+///static void on_menuitem_newfolder (GSimpleAction *act, GVariant *param, gpointer data) {
+///static void on_menuitem_newfolder (GtkMenuItem *menuitem, gpointer data) {
+static void on_menuitem_newfolder (gpointer menuitem) {
     fprintf (stderr, "new folder!\n");
 }
+
+///static void on_menuitem_newitem (GSimpleAction *act, GVariant *param, gpointer data) {
+///static void on_menuitem_newitem (GtkMenuItem *menuitem, gpointer data) {
 static void on_menuitem_newitem (GtkMenuItem *menuitem, gpointer data) {
     fprintf (stderr, "new item!\n");
 }
-static void on_menuitem_delete (GtkMenuItem *menuitem, gpointer data) {
+
+///static void on_menuitem_delete (GSimpleAction *act, GVariant *param, gpointer data) {
+///static void on_menuitem_delete (GtkMenuItem *menuitem, gpointer data) {
+static void on_menuitem_delete (gpointer menuitem) {
     fprintf (stderr, "delete !\n");
 }
-static void on_menuitem_properties (GtkMenuItem *menuitem, gpointer data) {
+
+///static void on_menuitem_properties (GSimpleAction *act, GVariant *param, gpointer data) {
+///static void on_menuitem_properties (GtkMenuItem *menuitem, gpointer data) {
+static void on_menuitem_properties (gpointer menuitem) {
     fprintf (stderr, "properties!\n");
 }
-static void on_menuitem_close (GtkMenuItem *menuitem, gpointer data) {
+
+///static void on_menuitem_close (GSimpleAction *act, GVariant *param, gpointer data) {
+///static void on_menuitem_close (GtkMenuItem *menuitem, gpointer data) {
+static void on_menuitem_close (gpointer menuitem) {
     fprintf (stderr, "close!\n");
 }
 
-static void on_menuitem_edit (void *menuitem, gpointer data)
+/**
+static void on_menuitem_radio_changed_edit (void *menuitem, gpointer data)
 {
     // - activate/toggled/changed trigger this cb twice with different menuitems
     // - the menuitem being deactivated and the menuitem being activated
-    // - we only want to know activated menuitems
+    // - we only want to know about activated menuitems
     int active = FALSE;
     int index;
     char * id;
@@ -152,18 +163,31 @@ static void on_menuitem_edit (void *menuitem, gpointer data)
         }
     }
 }
+**/
+static void on_menuitem_radio_changed_edit (gpointer menuitem, const char *radio_id)
+{
+    printf ("Selected: %s\n", radio_id);
+}
 
-static void on_menuitem_show (void *menuitem, gpointer data)
+
+/**
+static void on_menuitem_toggled_show (void *menuitem, gpointer data)
 {
     gboolean active;
 #if defined(USE_GTK_ACTION) && GTK_CHECK_VERSION(2,4,0)
     active = gtk_toggle_action_get_active (GTK_TOGGLE_ACTION (menuitem));
-    //gtk_action_set_visible   (GTK_ACTION (menuitem), FALSE);
-    //gtk_action_set_sensitive (GTK_ACTION (menuitem), FALSE);
 #else
     active = gtk_check_menu_item_get_active (GTK_CHECK_MENU_ITEM (menuitem));
 #endif
     if (active)
+        puts ("Item has been ACTIVATED");
+    else
+        puts ("Item has been de-ACTIVATED");
+}
+**/
+static void on_menuitem_toggled_show (gpointer menuitem, gboolean is_checked)
+{
+    if (is_checked)
         puts ("Item has been ACTIVATED");
     else
         puts ("Item has been de-ACTIVATED");
@@ -196,23 +220,23 @@ static GtkWidget * create_menu_bar (GtkWindow *window)
     menuitem.label       = _("_File");
     menuitem.accel_group = accel_group; /* 1 */
     menuitem.action_name = "MenuFile";
-    menuitem.gtk_app     = amap; /* 1 */
-    menuitem.tooltip     = "aaaaaaaa bbbb cccc ";
-    w_gtk_menu_item_new (&menuitem);
+    menuitem.action_group= amap; /* 1 */
+    //menuitem.tooltip   = "aaaaaaaa bbbb cccc ";
+    w_gtk_menuitem_new (&menuitem);
 
     // Menu Help
     menuitem.parent_menu = menubar;
     menuitem.submenu     = menu_help;
     menuitem.label       = _("_Help");
     menuitem.action_name = "MenuHelp";
-    w_gtk_menu_item_new (&menuitem);
+    w_gtk_menuitem_new (&menuitem);
 
     // Menu Edit
     menuitem.parent_menu = menubar;
     menuitem.submenu     = menu_edit;
     menuitem.label       = _("_Edit");
     menuitem.action_name = "MenuEdit";
-    w_gtk_menu_item_new (&menuitem);
+    w_gtk_menuitem_new (&menuitem);
     
     // ---------------------------------
     
@@ -221,7 +245,7 @@ static GtkWidget * create_menu_bar (GtkWindow *window)
     menuitem.label       = _("New _Folder...");
     menuitem.activate_cb = on_menuitem_newfolder;
     menuitem.action_name = "FileNewFolder";
-    w_gtk_menu_item_new (&menuitem);
+    w_gtk_menuitem_new (&menuitem);
 
     // File->New Item
     menuitem.parent_menu = menu_file;
@@ -230,7 +254,7 @@ static GtkWidget * create_menu_bar (GtkWindow *window)
     menuitem.activate_cb = on_menuitem_newitem;
     menuitem.accel_str   = "<Control>n";
     menuitem.action_name = "FileNewItem";
-    w_gtk_menu_item_new (&menuitem);
+    w_gtk_menuitem_new (&menuitem);
 
     // File->Delete
     menuitem.parent_menu = menu_file;
@@ -238,7 +262,7 @@ static GtkWidget * create_menu_bar (GtkWindow *window)
     menuitem.icon_name   = "gtk-delete";
     menuitem.activate_cb = on_menuitem_delete;
     menuitem.action_name = "FileDelete";
-    w_gtk_menu_item_new (&menuitem);
+    w_gtk_menuitem_new (&menuitem);
 
     // File->Properties
     menuitem.parent_menu = menu_file;
@@ -246,11 +270,11 @@ static GtkWidget * create_menu_bar (GtkWindow *window)
     menuitem.icon_name   = "gtk-properties";
     menuitem.activate_cb = on_menuitem_properties;
     menuitem.action_name = "FileProperties";
-    w_gtk_menu_item_new (&menuitem);
+    w_gtk_menuitem_new (&menuitem);
 
     // File-> ----
     menuitem.parent_menu = menu_file;
-    w_gtk_menu_item_new (&menuitem);
+    w_gtk_menuitem_new (&menuitem);
 
     // File->Close
     menuitem.parent_menu = menu_file;
@@ -259,21 +283,22 @@ static GtkWidget * create_menu_bar (GtkWindow *window)
     menuitem.activate_cb = on_menuitem_close;
     menuitem.accel_str   = "<Control>w";
     menuitem.action_name = "FileClose";
-    w_gtk_menu_item_new (&menuitem);
+    w_gtk_menuitem_new (&menuitem);
 
     // File-> ----
     menuitem.parent_menu = menu_file;
-    w_gtk_menu_item_new (&menuitem);
+    w_gtk_menuitem_new (&menuitem);
     
     // File->Show
     menuitem.parent_menu = menu_file;
     menuitem.label       = _("_Show");
     menuitem.checkbox    = TRUE;
     menuitem.check_state = TRUE;
-    menuitem.activate_cb = on_menuitem_show;
+    ///menuitem.activate_cb = on_menuitem_toggled_show;
+    menuitem.checked_cb  = on_menuitem_toggled_show;
     menuitem.accel_str   = "<Control>s";
     menuitem.action_name = "FileShow";
-    w_gtk_menu_item_new (&menuitem);
+    w_gtk_menuitem_new (&menuitem);
 
     // Edit->One
     menuitem.parent_menu = menu_edit;
@@ -281,8 +306,9 @@ static GtkWidget * create_menu_bar (GtkWindow *window)
     menuitem.action_name = "Edit/Number";
     menuitem.radio_group = "edit";
     menuitem.radio_id    = "edit1";
-    menuitem.activate_cb = on_menuitem_edit;
-    w_gtk_menu_item_new (&menuitem);
+    ///menuitem.activate_cb = on_menuitem_radio_changed_edit;
+    menuitem.radio_cb    = on_menuitem_radio_changed_edit;
+    w_gtk_menuitem_new (&menuitem);
 
     // Edit->Two
     menuitem.parent_menu = menu_edit;
@@ -290,8 +316,9 @@ static GtkWidget * create_menu_bar (GtkWindow *window)
     menuitem.action_name = "Edit/Number";
     menuitem.radio_group = "edit";
     menuitem.radio_id    = "edit2";
-    menuitem.activate_cb = on_menuitem_edit;
-    w_gtk_menu_item_new (&menuitem);
+    ///menuitem.activate_cb = on_menuitem_radio_changed_edit;
+    menuitem.radio_cb    = on_menuitem_radio_changed_edit;
+    w_gtk_menuitem_new (&menuitem);
 
     // Edit->Three
     menuitem.parent_menu = menu_edit;
@@ -300,8 +327,9 @@ static GtkWidget * create_menu_bar (GtkWindow *window)
     menuitem.radio_group = "edit";
     menuitem.radio_id    = "edit3";
     menuitem.check_state = TRUE;
-    menuitem.activate_cb = on_menuitem_edit;
-    w_gtk_menu_item_new (&menuitem);
+    ///menuitem.activate_cb = on_menuitem_radio_changed_edit;
+    menuitem.radio_cb    = on_menuitem_radio_changed_edit;
+    w_gtk_menuitem_new (&menuitem);
 
     // Edit->Four
     menuitem.parent_menu = menu_edit;
@@ -309,8 +337,9 @@ static GtkWidget * create_menu_bar (GtkWindow *window)
     menuitem.action_name = "Edit/Number";
     menuitem.radio_group = "edit";
     menuitem.radio_id    = "edit4";
-    menuitem.activate_cb = on_menuitem_edit;
-    w_gtk_menu_item_new (&menuitem);
+    ///menuitem.activate_cb = on_menuitem_radio_changed_edit;
+    menuitem.radio_cb    = on_menuitem_radio_changed_edit;
+    w_gtk_menuitem_new (&menuitem);
 
     gtk_widget_show_all (menubar);
 
@@ -327,7 +356,6 @@ void create_window (void)
 {
    GtkWidget * textwid, * stopwid;
    GtkWidget * main_vbox, * vbox;
-   GtkWidget * menubar;
 
    dialog = gtk_application_window_new (app);
    gtk_window_set_position (GTK_WINDOW (dialog), GTK_WIN_POS_CENTER_ALWAYS);
@@ -340,6 +368,7 @@ void create_window (void)
    gtk_container_add (GTK_CONTAINER (dialog), main_vbox);
 
 #if GTK_MAJOR_VERSION < 3
+   GtkWidget * menubar;
    menubar = create_menu_bar (GTK_WINDOW (dialog));
    gtk_box_pack_start (GTK_BOX (main_vbox), menubar, FALSE, FALSE, 2);
 #else
@@ -385,6 +414,6 @@ int main (int argc, char *argv[])
 
    gtk_main ();
 #endif
-	return 0;
+    return 0;
 }
 

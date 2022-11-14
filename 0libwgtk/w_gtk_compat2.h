@@ -177,7 +177,8 @@ GtkOrientation gtk_orientable_get_orientation (GtkOrientable  *widget);
 #define gtk_menu_get_accel_path(menu)         (GTK_MENU(menu)->accel_path)
 #define gtk_message_dialog_get_image(m)       (GTK_MESSAGE_DIALOG(m)->image)
 #define gtk_entry_get_overwrite_mode(e)       (GTK_ENTRY(e)->overwrite_mode)
-// ---
+#define gtk_selection_data_get_length(data)   ((data)->length)
+// -- GTK_ADJUSTMENT
 #define gtk_adjustment_set_page_increment(a,val) ((a)->page_increment = (val))
 #define gtk_adjustment_set_page_size(a,val)      ((a)->page_size = (val))
 #define gtk_adjustment_set_lower(a,val)          ((a)->lower = (val))
@@ -185,8 +186,11 @@ GtkOrientation gtk_orientable_get_orientation (GtkOrientable  *widget);
 #define gtk_adjustment_get_page_increment ((a)->page_increment)
 #define gtk_adjustment_get_page_size(a)   ((a)->page_size)
 #define gtk_adjustment_get_lower(a)       ((a)->lower)
-#define gtk_adjustment_get_upper(a)       ((a)->upper) // GTK_ADJUSTMENT
-#define gtk_selection_data_get_length(data)   ((data)->length)
+#define gtk_adjustment_get_upper(a)       ((a)->upper) 
+// -- GTK_FONT_SELECTION_DIALOG
+#define gtk_font_selection_dialog_get_ok_button(d)     ((d)->ok_button)
+#define gtk_font_selection_dialog_get_cancel_button(d) ((d)->cancel_button)
+#define gtk_font_selection_dialog_get_apply_button(d)  ((d)->apply_button)
 #endif
 
 
@@ -294,7 +298,16 @@ char *g_path_get_dirname (const char *filename);
 void gtk_table_get_size (GtkTable *table, guint *rows, guint *columns);
 gint gtk_option_menu_get_history (GtkOptionMenu *option_menu);
 
+#define GTK_SELECTION_NONE GTK_SELECTION_SINGLE
 #define GTK_WIN_POS_CENTER_ON_PARENT GTK_WIN_POS_CENTER
+#define GTK_ACCEL_GROUP(a) ((GtkAccelGroup*)(a))
+
+#define gtk_label_new_with_mnemonic gtk_label_new              // TODO: make a function and remove _
+#define gtk_label_set_label gtk_label_set_text
+#define gtk_label_get_text(w)  ((const char*)GTK_LABEL(w)->label)
+#define gtk_label_get_label(w) ((const char*)GTK_LABEL(w)->label)
+#define gtk_label_get_use_markup(label) (FALSE)
+#define gtk_label_set_use_markup(label,bool)
 
 #define gtk_widget_set_size_request       gtk_widget_set_usize
 #define gtk_widget_get_parent(w)          (GTK_WIDGET(w)->parent)
@@ -303,40 +316,45 @@ gint gtk_option_menu_get_history (GtkOptionMenu *option_menu);
 #define gtk_container_get_resize_mode(w)  (GTK_CONTAINER(w)->resize_mode)
 #define gtk_bin_get_child(w) (GTK_BIN(w)->child)
 #define gtk_frame_get_label(w) ((const char*)GTK_FRAME(w)->label)
-#define gtk_label_new_with_mnemonic gtk_label_new              // TODO: make a function and remove _
-//#define gtk_button_new_with_mnemonic gtk_button_new_with_label // TODO: make a function and remove _
-GtkWidget*  gtk_button_new_with_mnemonic (const char *label);
+
+GtkWidget* gtk_button_new_with_mnemonic (const char *label);
+GtkWidget* gtk_check_button_new_with_mnemonic (const char *label);
+GtkWidget* gtk_toggle_button_new_with_mnemonic (const char *label);
+GtkWidget* gtk_radio_button_new_with_mnemonic (GSList *group, const gchar *label);
+GtkWidget* gtk_radio_button_new_with_mnemonic_from_widget (GtkRadioButton *radio_group_member, const gchar *label);
 #define gtk_radio_button_get_group(rb) (GTK_RADIO_BUTTON(rb)->group)
 #define gtk_button_set_focus_on_click(button,bool)
 #define gtk_button_get_focus_on_click(button) (FALSE)
 #define gtk_button_set_image_position(button,pos)
 #define gtk_button_set_image(button,img)
+#define gtk_button_get_label(i) (gtk_label_get_label (GTK_LABEL(GTK_BIN(i)->child)))
+#define gtk_button_set_label(i,label) gtk_label_set_label(GTK_LABEL(GTK_BIN(i)->child), (label) ? label : "")
+
 #define gtk_toolbar_get_orientation(tb) (GTK_TOOLBAR(tb)->orientation)
-#define gtk_label_get_text(w)  ((const char*)GTK_LABEL(w)->label)
-#define gtk_label_get_label(w) ((const char*)GTK_LABEL(w)->label)
 #define gtk_separator_menu_item_new gtk_menu_item_new // TODO
 #define gtk_menu_item_new_with_mnemonic       gtk_menu_item_new_with_label        // see w_gtk_menu.h
 #define gtk_radio_menu_item_new_with_mnemonic gtk_radio_menu_item_new_with_label  // see w_gtk_menu.h
 #define gtk_check_menu_item_new_with_mnemonic gtk_check_menu_item_new_with_label  // see w_gtk_menu.h
 #define gtk_radio_menu_item_get_group(w)      (GTK_RADIO_MENU_ITEM(w)->group)
-#define gtk_check_menu_item_get_active(w) (GTK_CHECK_MENU_ITEM(w)->active)  // TODO: make a function and remove _
+#define gtk_check_menu_item_get_active(w) (GTK_CHECK_MENU_ITEM(w)->active)
 #define gtk_menu_item_set_accel_path(item,path)
-//gtk_button_new_with_mnemonic
-//gtk_check_button_new_with_mnemonic
-//gtk_toggle_button_new_with_mnemonic
-//gtk_radio_button_new_with_mnemonic
+
+#define GError void
+#define gtk_style_get_font(s) (((GtkStyle*)(s))->font)
+#define gtk_calendar_set_display_options gtk_calendar_display_options
+#define gtk_adjustment_get_value(adj) (GTK_ADJUSTMENT(adj)->value)
 
 #define gtk_entry_set_width_chars gtk_entry_set_max_length
 #define gtk_entry_get_width_chars(w) (GTK_ENTRY(w)->text_max_length)
 
-#define gtk_label_get_use_markup(label) (FALSE)
-#define gtk_label_set_use_markup(label,bool)
 #define gtk_window_set_resizable(window,bool)
 #define gtk_window_set_destroy_with_parent(window,bool)
 #define gtk_window_set_type_hint(window,hint)
 #define gtk_window_set_role(window,role)
 #define GDK_WINDOW_TYPE_HINT_DIALOG 0
 #define gtk_scrolled_window_set_shadow_type(sc,type)
+#define gtk_color_selection_set_has_opacity_control gtk_color_selection_set_opacity
+#define gtk_color_selection_get_has_opacity_control(w) (GTK_COLOR_SELECTION(w)->use_opacity)
 
 #define G_OBJECT GTK_OBJECT
 #define g_object_set_data gtk_object_set_data
@@ -353,9 +371,11 @@ void g_object_unref (gpointer object);
 #define G_CALLBACK GTK_SIGNAL_FUNC
 #define GCallback  GtkSignalFunc
 // TODO: g_signal_* accept gpointers, this triggers warnings, force convertion to GtkObject
-#define g_signal_connect(object,signal_str,cb,cb_data) gtk_signal_connect(GTK_OBJECT(object),(signal_str),(cb),(cb_data))
-#define g_signal_connect_after   gtk_signal_connect_after
-#define g_signal_connect_swapped gtk_signal_connect_object
+#define g_signal_connect(object,signal_str,cb,cb_data) \
+            gtk_signal_connect(GTK_OBJECT(object),(signal_str),(cb),(cb_data))
+#define g_signal_connect_after gtk_signal_connect_after
+#define g_signal_connect_swapped(object,signal_str,cb,cb_data) \
+            gtk_signal_connect_object(GTK_OBJECT(object),(signal_str),(cb),GTK_OBJECT(cb_data))
 #define g_signal_handler_disconnect gtk_signal_disconnect
 ///#define g_signal_emit            gtk_signal_emit_by_name TODO: replace_gtk2.sh
 #define g_signal_emit_by_name       gtk_signal_emit_by_name
@@ -367,6 +387,17 @@ void g_object_unref (gpointer object);
 #define g_signal_handler_unblock gtk_signal_handler_unblock
 //#define G_STRUCT_OFFSET GTK_SIGNAL_OFFSET
 #define g_signal_handlers_disconnect_matched gtk_signal_disconnect_by_data
+
+#define GSourceFunc GtkFunction
+#define g_timeout_add   gtk_timeout_add
+#define g_source_remove gtk_timeout_remove
+
+#define GTK_WIDGET_GET_CLASS(w)    (GTK_WIDGET_CLASS(GTK_OBJECT(w)->klass))
+#define GTK_WINDOW_GET_CLASS(w)    (GTK_WINDOW_CLASS(GTK_OBJECT(w)->klass))
+#define GTK_DIALOG_GET_CLASS(w)    (GTK_DIALOG_CLASS(GTK_OBJECT(w)->klass))
+#define GTK_BUTTON_GET_CLASS(w)    (GTK_BUTTON_CLASS(GTK_OBJECT(w)->klass))
+#define GTK_BOX_GET_CLASS(w)       (GTK_BOX_CLASS(GTK_OBJECT(w)->klass))
+#define GTK_CONTAINER_GET_CLASS(w) (GTK_CONTAINER_CLASS(GTK_OBJECT(w)->klass))
 
 #define gtk_marshal_BOOLEAN__VOID gtk_marshal_BOOL__NONE
 #define gtk_marshal_BOOLEAN__POINTER gtk_marshal_BOOL__POINTER
@@ -527,6 +558,7 @@ typedef enum
 #define GTK_STOCK_ZOOM_FIT         "gtk-zoom-fit" //Zoom to Fit
 #define GTK_STOCK_ZOOM_IN          "gtk-zoom-in"  //Zoom In
 #define GTK_STOCK_ZOOM_OUT         "gtk-zoom-out" //Zoom Out
+
 
 // gtkdialog.h
 typedef enum

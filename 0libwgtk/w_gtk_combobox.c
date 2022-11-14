@@ -11,8 +11,13 @@
 // - GtkComboBox   (gtk2/3/4) [GtkEntry] [GtkTreeModel / GtkListStore [GtkTreeIter]]
 // - GtkCombo      (gtk1/2)   [GtkEntry] [GtkList [GtkListItem]]
 // - GtkOptionMenu (gtk1/2)   (no entry) [GtkMenu [GtkMenuItem]]
+// - GtkDropDown   (gtk4)     (no entry) [GListModel / GtkStringList]
+//     TODO: preliminary support, this has no been tested
+//     Limitations: (fixing this requires implementing advanced stuff)
+//     * cannot prepend/insert items (only append)
+//     * no data field (only text)
+//     * the (search) entry contents cannot be retrieved?
 
-// There is preliminary support for GtkDropDown
 
 // all w_gtk_combo_..() functions take GtkWidget as parameter
 
@@ -33,6 +38,10 @@
   - https://refspecs.linuxbase.org/gtk/2.6/gtk/GtkCombo.html
        https://refspecs.linuxbase.org/gtk/2.6/gtk/GtkList.html
           https://refspecs.linuxbase.org/gtk/2.6/gtk/GtkListItem.html
+
+  - https://docs.gtk.org/gtk4/class.DropDown.html
+       https://docs.gtk.org/gtk4/class.StringList.html
+          https://docs.gtk.org/gio/iface.ListModel.html
 */
 
 #if defined(__clang__)
@@ -67,6 +76,89 @@
 #endif
 
 
+/*--------------------------------------------------------------
+/                  w_gtk_combobox_new
+/-------------------------------------------------------------*/
+
+/*
+   Support combobox with `text` and `data` fields
+   text is a char array (char*)
+   data is a [hidden] gpointer (void*), a pointer to any object
+
+   - GtkDropDown
+     * text is stored in a GtkStringList (not GListStore)
+     * data is not supported
+   - GtkComboBox
+     * text is field 0 of a GtkListStore
+     * data is field 1 of a GtkListStore [w_gtk_combo_box_set_w_model()]
+   - GtkCombo
+     * text is a GtkListItem label
+     * data is GtkListItem "wdata" (object data)
+   - GtkOptionMenu
+     * text is a GtkMenuItem label [hacky]
+     * data is GtkMenuItem "wdata" (object data)
+*/
+
+GtkWidget * w_gtk_combobox_new ()
+{
+    GtkWidget * combo;
+
+#if GTK_CHECK_VERSION(4,0,0) // 4,10,0 //TODO this has not been tested
+    // Some people say GtkComboBox is broken in gtk4
+    GtkStringList *list = gtk_string_list_new (NULL);
+    combo = gtk_drop_down_new (G_LIST_MODEL(list), NULL);
+#endif
+#if GTK_CHECK_VERSION(2,24,0)
+    combo = gtk_combo_box_text_new (); // deprecated in GTK 4.10
+    w_gtk_combo_box_set_w_model (combo, FALSE);
+#elif GTK_CHECK_VERSION(2,4,0)
+    combo = gtk_combo_box_new_text (); // deprecated in GTK 2.24
+    w_gtk_combo_box_set_w_model (combo, FALSE);
+#elif !GTK_CHECK_VERSION(2,4,0)
+    // GtkOptionMenu is ugly and not suitable for complex operations
+    ///combo = gtk_option_menu_new (); // deprecated in GTK 2.4
+    ///gtk_option_menu_set_menu (GTK_OPTION_MENU(combo), gtk_menu_new());
+    combo = gtk_combo_new (); // deprecated in GTK 2.4
+    gtk_editable_set_editable (GTK_EDITABLE(GTK_COMBO(combo)->entry), FALSE);
+#endif
+    return combo;
+}
+
+/*--------------------------------------------------------------
+/              w_gtk_combobox_new_with_entry
+/-------------------------------------------------------------*/
+
+GtkWidget * w_gtk_combobox_new_with_entry ()
+{
+    GtkWidget * combo;
+#if GTK_CHECK_VERSION(4,0,0) // 4,10,0 //TODO this has not been tested
+    // Some people say GtkComboBox is broken in gtk4
+    GtkStringList *list = gtk_string_list_new (NULL);
+    combo = gtk_drop_down_new (G_LIST_MODEL(list), NULL);
+    gtk_drop_down_set_enable_search (GTK_DROP_DOWN(combo), TRUE);
+    W_DEBUG_PUTS ("w_gtk_combobox: new GtkDropDown");
+#endif
+#if GTK_CHECK_VERSION(2,24,0)
+    combo = gtk_combo_box_text_new_with_entry ();  // deprecated in GTK 4.10
+    w_gtk_combo_box_set_w_model (combo, FALSE);
+    W_DEBUG_PUTS ("w_gtk_combobox: new GtkComboBoxText with Entry (w model)");
+#elif GTK_CHECK_VERSION(2,4,0)
+    combo = gtk_combo_box_entry_new_text ();  // deprecated in GTK 2.24
+    w_gtk_combo_box_set_w_model (combo, FALSE);
+    W_DEBUG_PUTS ("w_gtk_combobox: new GtkComboBoxEntry with text (w model)");
+#elif !GTK_CHECK_VERSION(2,4,0)
+    combo = gtk_combo_new ();  // deprecated in GTK 2.4
+    W_DEBUG_PUTS ("w_gtk_combobox: new GtkCombo");
+#endif
+    w_gtk_combobox_set_search_case_insensitive (combo, FALSE);
+    return combo;
+}
+
+
+/*--------------------------------------------------------------
+/         w_gtk_combobox_add_changed_handler
+/-------------------------------------------------------------*/
+
 /* the "changed" signal
  
 GtkComboBox:     changed (combo,data)
@@ -90,10 +182,15 @@ static void on_combo_changed_cb (GtkWidget *widget, gpointer user_data)
 }
 */
 
+#if GTK_CHECK_VERSION(4,0,0)
+static void dropdown_to_combobox_changed (GtkWidget *widget, GParamSpec *pspec, gpointer user_data)
+{
+    void (*func) (void*, void*);
+    func = user_data;
+    func(widget, NULL); // GtkDropdown: cb_data is not passed 
+}
+#endif
 
-/*--------------------------------------------------------------
-/         w_gtk_combobox_add_changed_handler
-/-------------------------------------------------------------*/
 
 int w_gtk_combobox_add_changed_handler (GtkWidget *combo, gpointer cb, gpointer cb_data)
 {
@@ -101,18 +198,19 @@ int w_gtk_combobox_add_changed_handler (GtkWidget *combo, gpointer cb, gpointer 
 #if GTK_CHECK_VERSION(4,0,0)
     if (GTK_IS_DROP_DOWN(combo)) //TODO: this has not been tested
     {
-        W_DEBUG_PUTS ("w_gtk_combo_box: add changed cb for GtkDropDown");
+        W_DEBUG_PUTS ("w_gtk_combobox: add changed cb for GtkDropDown");
         // void selected_cb (GtkDropDown *widget, GParamSpec *pspec, gpointer user_data)
         //                                        ----(problem)----
         // I think there is also notify::selected-item
-        handler = g_signal_connect (G_OBJECT(combo), "notify::selected", G_CALLBACK(cb), cb_data);
+        handler = g_signal_connect (G_OBJECT(combo), "notify::selected",
+                  G_CALLBACK(dropdown_to_combobox_changed), cb);
         return handler;
     }
 #endif
 #if (GTK_CHECK_VERSION(2,4,0) && GTK_MAJOR_VERSION <= 4)
     if (GTK_IS_COMBO_BOX(combo))
     {
-        W_DEBUG_PUTS ("w_gtk_combo_box: add changed cb for GtkComboBox");
+        W_DEBUG_PUTS ("w_gtk_combobox: add changed cb for GtkComboBox");
         // void changed_cb (GtkComboBox *widget, gpointer user_data)
         handler = g_signal_connect (G_OBJECT(combo), "changed", G_CALLBACK(cb), cb_data);
         return handler;
@@ -121,7 +219,7 @@ int w_gtk_combobox_add_changed_handler (GtkWidget *combo, gpointer cb, gpointer 
 #if GTK_MAJOR_VERSION <= 2
     if (GTK_IS_COMBO(combo))
     {
-        W_DEBUG_PUTS ("w_gtk_combo_box: add changed cb for GtkCombo entry");
+        W_DEBUG_PUTS ("w_gtk_combobox: add changed cb for GtkCombo entry");
         // void changed_cb (GtkEntry *widget, gpointer user_data)
         handler = g_signal_connect (G_OBJECT(GTK_COMBO(combo)->entry),
                                     "changed", G_CALLBACK(cb), cb_data);
@@ -131,7 +229,7 @@ int w_gtk_combobox_add_changed_handler (GtkWidget *combo, gpointer cb, gpointer 
     }
     else if (GTK_IS_OPTION_MENU(combo))
     {
-        W_DEBUG_PUTS ("w_gtk_combo_box: add changed cb for GtkOptionMenu");
+        W_DEBUG_PUTS ("w_gtk_combobox: add changed cb for GtkOptionMenu");
 #      if GTK_CHECK_VERSION(2,0,0)
         // void changed_cb (GtkOptionMenu *widget, gpointer user_data)
         handler = g_signal_connect (G_OBJECT(combo), "changed", G_CALLBACK(cb), cb_data);
@@ -140,10 +238,11 @@ int w_gtk_combobox_add_changed_handler (GtkWidget *combo, gpointer cb, gpointer 
         g_object_set_data (G_OBJECT(combo), "w_changed_cb", cb);
         g_object_set_data (G_OBJECT(combo), "w_changed_cb_data", cb_data);
 #      endif
-    } else {
-        g_warning ("Invalid wcombo widget");
     }
 #endif
+    if (handler == -1) {
+        g_warning ("Invalid wcombo widget");
+    }
     return handler;
 }
 
@@ -189,58 +288,6 @@ GtkWidget *w_gtk_combobox_cb_ensure_combo (GtkWidget *widget)
     return NULL;
 }
 
-/*--------------------------------------------------------------
-/                  w_gtk_combobox_new
-/-------------------------------------------------------------*/
-
-GtkWidget * w_gtk_combobox_new ()
-{
-    GtkWidget * combo;
-
-#if GTK_CHECK_VERSION(4,0,0) // 4,10,0 //TODO
-    // Some people say GtkComboBox is broken in gtk4
-    //combo = gtk_drop_down_new ();
-#endif
-#if GTK_CHECK_VERSION(2,24,0)
-    combo = gtk_combo_box_text_new (); // deprecated in GTK 4.10
-    w_gtk_combo_box_set_w_model (combo, FALSE);
-#elif GTK_CHECK_VERSION(2,4,0)
-    combo = gtk_combo_box_new_text (); // deprecated in GTK 2.24
-    w_gtk_combo_box_set_w_model (combo, FALSE);
-#elif !GTK_CHECK_VERSION(2,4,0)
-    // GtkOptionMenu is ugly and not suitable for complex operations
-    ///combo = gtk_option_menu_new (); // deprecated in GTK 2.4
-    ///gtk_option_menu_set_menu (GTK_OPTION_MENU(combo), gtk_menu_new());
-    combo = gtk_combo_new (); // deprecated in GTK 2.4
-    gtk_editable_set_editable (GTK_EDITABLE(GTK_COMBO(combo)->entry), FALSE);
-#endif
-    return combo;
-}
-
-/*--------------------------------------------------------------
-/              w_gtk_combobox_new_with_entry
-/-------------------------------------------------------------*/
-
-GtkWidget * w_gtk_combobox_new_with_entry ()
-{
-    GtkWidget * combo;
-#if GTK_CHECK_VERSION(4,0,0) // 4,10,0 //TODO
-    // Some people say GtkComboBox is broken in gtk4
-    //combo = gtk_drop_down_new ();
-#endif
-#if GTK_CHECK_VERSION(2,24,0)
-    combo = gtk_combo_box_text_new_with_entry ();  // deprecated in GTK 4.10
-    w_gtk_combo_box_set_w_model (combo, FALSE);
-#elif GTK_CHECK_VERSION(2,4,0)
-    combo = gtk_combo_box_entry_new_text ();  // deprecated in GTK 2.24
-    w_gtk_combo_box_set_w_model (combo, FALSE);
-#elif !GTK_CHECK_VERSION(2,4,0)
-    combo = gtk_combo_new ();  // deprecated in GTK 2.4
-#endif
-    w_gtk_combobox_set_search_case_insensitive (combo, FALSE);
-    return combo;
-}
-
 
 /*--------------------------------------------------------------
 /             w_gtk_combobox_get_entry
@@ -253,6 +300,7 @@ GtkWidget * w_gtk_combobox_get_entry (GtkWidget *combo)
 #if GTK_CHECK_VERSION(4,0,0)
     if (GTK_IS_DROP_DOWN(combo)) // TODO
     {
+        ///g_warning ("GtkDropDown: no entry");
         return entry;
     }
 #endif
@@ -323,7 +371,12 @@ void w_gtk_combobox_clear (GtkWidget *combo)
     if (GTK_IS_DROP_DOWN(combo)) //TODO: this has not been tested
     {
         GListModel * model = gtk_drop_down_get_model (GTK_DROP_DOWN(combo));
-        g_list_store_remove_all (G_LIST_STORE(model));
+        guint count = g_list_model_get_n_items (model);
+        guint i;
+        for (i = count-1; i >= 0; i--) {
+            gtk_string_list_remove (GTK_STRING_LIST(model), i);
+        }
+        ///NOT: g_list_store_remove_all (G_LIST_STORE(model));
         return;
     }
 #endif
@@ -422,8 +475,16 @@ void w_gtk_combobox_insert (GtkWidget *combo, int position, const char *text, gp
     // position  0: prepend
     // position  0+: insert
 #if GTK_CHECK_VERSION(4,0,0)
-    if (GTK_IS_DROP_DOWN(combo)) //TODO
+    if (GTK_IS_DROP_DOWN(combo)) //TODO: this has not been tested
     {
+        GListModel *model = gtk_drop_down_get_model (GTK_DROP_DOWN(combo));
+        GtkStringList *list = GTK_STRING_LIST(model);
+        switch (position) {
+           case -1: gtk_string_list_append (list, text); break;
+           case  0: g_warning ("GtkDropDown does not support prepending items"); break;
+           default:
+            g_warning ("GtkDropDown does not support inserting items");
+        }
         return;
     }
 #endif
@@ -559,7 +620,8 @@ void w_gtk_combobox_remove (GtkWidget *combo, int position) // index
     if (GTK_IS_DROP_DOWN(combo)) //TODO: this has not been tested
     {
         GListModel * model = gtk_drop_down_get_model (GTK_DROP_DOWN(combo));
-        g_list_store_remove (G_LIST_STORE(model), (guint) position);
+        gtk_string_list_remove (GTK_STRING_LIST(model), (guint) position);
+        ///NOT: g_list_store_remove (G_LIST_STORE(model), (guint) position);
         return removed;
     }
 #endif
@@ -573,6 +635,7 @@ void w_gtk_combobox_remove (GtkWidget *combo, int position) // index
             gtk_list_store_remove (GTK_LIST_STORE(model), &iter);
         }
         gtk_tree_path_free (path);
+        return;
     }
 #endif
 #if GTK_MAJOR_VERSION <= 2
@@ -610,8 +673,11 @@ void w_gtk_combobox_get_item (GtkWidget *combo, int position, WGtkComboItem *out
     memset (out_comboitem, 0, sizeof(*out_comboitem));
     out_comboitem->index = position;
 #if GTK_CHECK_VERSION(4,0,0)
-    if (GTK_IS_DROP_DOWN(combo)) // TODO
+    if (GTK_IS_DROP_DOWN(combo)) // TODO: this has not been tested
     {
+        GListModel * model = gtk_drop_down_get_model (GTK_DROP_DOWN(combo));
+        GtkStringList *sl = GTK_STRING_LIST(model);
+        out_comboitem->text  = g_strdup (gtk_string_list_get_string(sl, sel));
         return;
     }
 #endif
@@ -707,6 +773,8 @@ int w_gtk_combobox_get_selected (GtkWidget *combo, WGtkComboItem *out_comboitem)
     if (GTK_IS_DROP_DOWN(combo)) //TODO: this has not been tested
     {
         unsigned int sel;
+        GListModel * model = gtk_drop_down_get_model (GTK_DROP_DOWN(combo));
+        GtkStringList *sl = GTK_STRING_LIST(model);
         sel = gtk_drop_down_get_selected (GTK_DROP_DOWN(combo));
         if (sel == GTK_INVALID_LIST_POSITION) {
             return -1;
@@ -715,7 +783,7 @@ int w_gtk_combobox_get_selected (GtkWidget *combo, WGtkComboItem *out_comboitem)
         }
         if (out_comboitem && active > -1) {
             out_comboitem->index = active;
-            //TODO
+            out_comboitem->text  = g_strdup (gtk_string_list_get_string(sl, sel));
         }
         return active;
     }
@@ -872,6 +940,9 @@ int w_gtk_combobox_search_text (GtkWidget *combo, const char *str,
     int (*strcmp_func) (const char*, const char*);
     char *value = NULL;
     int index = -1;
+    if (out_data) {
+        *out_data = NULL;
+    }
     if (!str) {
         return -1;
     }
@@ -883,9 +954,26 @@ int w_gtk_combobox_search_text (GtkWidget *combo, const char *str,
     }
     ///printf ("case_insensitive: %d\n", case_insensitive);
 #if GTK_CHECK_VERSION(4,0,0)
-    if (GTK_IS_DROP_DOWN(combo)) //TODO
+    if (GTK_IS_DROP_DOWN(combo)) //TODO: this has not been tested
     {
-        return index;
+        GListModel * model  = gtk_drop_down_get_model (GTK_DROP_DOWN(combo));
+        GtkStringList *list = GTK_STRING_LIST(model);
+        guint count = g_list_model_get_n_items (model);
+        guint i;
+        for (i = 0; i < count; i++)
+        {
+            value = (char*) gtk_string_list_get_string (list, i);
+            g_warn_if_fail (value != NULL);
+            if (strcmp_func (value, str) == 0)
+            { // found
+                if (select) {
+                    gtk_drop_down_set_selected (GTK_DROP_DOWN(combo), i);
+                }
+                index = (int) i;
+                return index;
+            }
+        }
+        return -1;
     }
 #endif
 #if (GTK_CHECK_VERSION(2,4,0) && GTK_MAJOR_VERSION <= 4)
@@ -901,7 +989,7 @@ int w_gtk_combobox_search_text (GtkWidget *combo, const char *str,
             g_warn_if_fail (value != NULL);
             if (strcmp_func (value, str) == 0)
             { // found
-                g_free (value); // string values have to be freed
+                g_free (value); // string values must be freed
                 if (out_data) {
                     g_warn_if_fail (gtk_tree_model_get_n_columns(model) == 2);
                     gtk_tree_model_get (model, &iter, 1, out_data, -1);
@@ -955,10 +1043,7 @@ int w_gtk_combobox_search_text (GtkWidget *combo, const char *str,
             menu_item = GTK_WIDGET(igl->data); // igl->data = GtkMenuItem
             // gtk_menu_item_get_label() fails here, broken in gtk1 & gtk2
             value     = g_object_get_data (G_OBJECT(menu_item), "wlabel");
-            if (!value) {
-                continue;
-            }
-            if (strcmp_func (value, str) == 0)
+            if (value && strcmp_func(value, str) == 0)
             { // found
                 if (out_data) {
                     *out_data = g_object_get_data (G_OBJECT(menu_item), "wdata");
@@ -990,6 +1075,7 @@ int w_gtk_combobox_search_data (GtkWidget *combo, gpointer wdata, gboolean selec
 #if GTK_CHECK_VERSION(4,0,0)
     if (GTK_IS_DROP_DOWN(combo)) //TODO
     {
+        g_warning ("GtkDropDown does not support searching by data");
         return index;
     }
 #endif
@@ -1046,9 +1132,7 @@ int w_gtk_combobox_search_data (GtkWidget *combo, gpointer wdata, gboolean selec
             if (value == wdata) { // found
                 if (select) {
                     gtk_option_menu_set_history (GTK_OPTION_MENU(combo), index);
-                    //these don't work:
-                    // gtk_menu_shell_select_item (GTK_MENU_SHELL(menu), menu_item); 
-                    // gtk_menu_item_select (GTK_MENU_ITEM(menu_item));
+                    //these don't work: gtk_menu_item_select / gtk_menu_shell_select_item
                 }
                 return index;
             }
@@ -1221,7 +1305,7 @@ void w_gtk_combo_box_set_w_model (GtkWidget *combo, gboolean sort)
     // * GLib-GObject-WARNING: unable to set property `text' of type `gchararray' from value of type `guchar'
 #if GTK_MAJOR_VERSION == 2
     if (GTK_IS_COMBO_BOX_ENTRY(combo)) {
-        gtk_combo_box_entry_set_text_column  (GTK_COMBO_BOX_ENTRY(combo), 0);
+        gtk_combo_box_entry_set_text_column (GTK_COMBO_BOX_ENTRY(combo), 0);
         return;
     }
 #endif

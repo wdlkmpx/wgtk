@@ -121,6 +121,7 @@ GtkOrientation gtk_orientable_get_orientation (GtkOrientable  *widget)
 //==================================================
 
 #if !GTK_CHECK_VERSION(2, 12, 0)
+
 void gtk_widget_set_tooltip_text (GtkWidget *widget, const char *text)
 {
     GtkTooltips *tooltip; // GtkTooltips was deprecated in gtk 2.12
@@ -320,16 +321,56 @@ gint gtk_option_menu_get_history (GtkOptionMenu *option_menu)
 }
 
 
-// https://github.com/wdlkmpx/gWaveEdit/commit/ad5603b4cbd7aa996896fbc9ef2fb6c65d67da01
-GtkWidget*  gtk_button_new_with_mnemonic (const char *label)
+static void gtk1_set_label_mnemonic (GtkWidget *accel_widget, GtkLabel *labelw, const char *text)
 {
-    GtkWidget *button;
+    static GtkAccelGroup *gtk1_accelgroup = NULL;
     guint key;
-    button = gtk_button_new_with_label (label);
-    if (label && strchr(label,'_')) {
-        key = gtk_label_parse_uline (GTK_LABEL(GTK_BIN(button)->child), label);
-        gtk_widget_add_accelerator (button, "clicked", NULL, key, GDK_MOD1_MASK, (GtkAccelFlags) 0);
+    if (text && strchr(text,'_'))
+    {
+        if (!gtk1_accelgroup) {
+            gtk1_accelgroup = gtk_accel_group_new(); // hack, the mnemonic will not work
+        }
+        // https://github.com/wdlkmpx/gWaveEdit/commit/ad5603b4cbd7aa996896fbc9ef2fb6c65d67da01
+        key = gtk_label_parse_uline (labelw, text);
+        gtk_widget_add_accelerator (accel_widget, "clicked",
+                                    gtk1_accelgroup,
+                                    key, GDK_MOD1_MASK, (GtkAccelFlags) 0);
     }
+}
+
+
+GtkWidget* gtk_button_new_with_mnemonic (const char *label)
+{
+    GtkWidget *button = gtk_button_new_with_label (label);
+    gtk1_set_label_mnemonic (button, GTK_LABEL(GTK_BIN(button)->child), label);
+    return button;
+}
+
+GtkWidget* gtk_check_button_new_with_mnemonic (const char *label)
+{
+    GtkWidget *button = gtk_check_button_new_with_label (label);
+    gtk1_set_label_mnemonic (button, GTK_LABEL(GTK_BIN(button)->child), label);
+    return button;
+}
+
+GtkWidget* gtk_toggle_button_new_with_mnemonic (const char *label)
+{
+    GtkWidget *button = gtk_toggle_button_new_with_label (label);
+    gtk1_set_label_mnemonic (button, GTK_LABEL(GTK_BIN(button)->child), label);
+    return button;
+}
+
+GtkWidget* gtk_radio_button_new_with_mnemonic (GSList *group, const gchar *label)
+{
+    GtkWidget *button = gtk_radio_button_new_with_label (group, label);
+    gtk1_set_label_mnemonic (button, GTK_LABEL(GTK_BIN(button)->child), label);
+    return button;
+}
+
+GtkWidget* gtk_radio_button_new_with_mnemonic_from_widget (GtkRadioButton *radio_group_member, const gchar *label)
+{
+    GtkWidget *button = gtk_radio_button_new_with_label_from_widget (radio_group_member, label);
+    gtk1_set_label_mnemonic (button, GTK_LABEL(GTK_BIN(button)->child), label);
     return button;
 }
 
