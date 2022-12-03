@@ -99,14 +99,14 @@ void w_gtk_tree_view_select_row (GtkWidget *tv, int n);
 
 // ==================================================================
 
-struct WGtkComboItem_
+struct WGtkSimpleListItem_
 {
     int index;
     char *text;
     gpointer data;
 };
 
-typedef struct WGtkComboItem_ WGtkComboItem;
+typedef struct WGtkSimpleListItem_ WGtkSimpleListItem;
 
 // ==================================================================
 // w_gtk_combobox.h
@@ -134,11 +134,11 @@ void w_gtk_combobox_append_text (GtkWidget *combo, const char *text);
 void w_gtk_combobox_prepend_text (GtkWidget *combo, const char *text);
 void w_gtk_combobox_remove (GtkWidget *combo, int position); // index
 
-void w_gtk_combobox_get_item (GtkWidget *combo, int position, WGtkComboItem *out_comboitem);
+void w_gtk_combobox_get_item (GtkWidget *combo, int position, WGtkSimpleListItem *out_item);
 char *w_gtk_combobox_get_item_text (GtkWidget *combo, int position);
 char *w_gtk_combobox_get_item_data (GtkWidget *combo, int position);
 
-int w_gtk_combobox_get_selected (GtkWidget *combo, WGtkComboItem *out_comboitem);
+int w_gtk_combobox_get_selected (GtkWidget *combo, WGtkSimpleListItem *out_item);
 char *w_gtk_combobox_get_active_text (GtkWidget *combo);
 int  w_gtk_combobox_get_active_index (GtkWidget *combo);
 void w_gtk_combobox_set_active_index (GtkWidget *combo, int index);

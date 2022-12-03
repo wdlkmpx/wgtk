@@ -93,10 +93,10 @@
      * data is field 1 of a GtkListStore [w_gtk_combo_box_set_w_model()]
    - GtkCombo
      * text is a GtkListItem label
-     * data is GtkListItem "wdata" (object data)
+     * data is GtkListItem "itemdata" (object data)
    - GtkOptionMenu
      * text is a GtkMenuItem label [hacky]
-     * data is GtkMenuItem "wdata" (object data)
+     * data is GtkMenuItem "itemdata" (object data)
 */
 
 GtkWidget * w_gtk_combobox_new ()
@@ -522,7 +522,7 @@ void w_gtk_combobox_insert (GtkWidget *combo, int position, const char *text, gp
         /// position  0 = gtk_list_prepend_items (GTK_LIST(list), glist);
         gtk_list_insert_items (GTK_LIST(list), glist, position);
         if (wdata) {
-            g_object_set_data (G_OBJECT(item), "wdata", wdata);
+            g_object_set_data (G_OBJECT(item), "itemdata", wdata);
         }
     }
     else if (GTK_IS_OPTION_MENU(combo))
@@ -545,7 +545,7 @@ void w_gtk_combobox_insert (GtkWidget *combo, int position, const char *text, gp
         /// position -1 = gtk_menu_shell_append (GTK_MENU_SHELL(menu), item);
         /// position  0 = gtk_menu_shell_prepend (GTK_MENU_SHELL(menu), item);
         if (wdata) {
-            g_object_set_data (G_OBJECT(item), "wdata", wdata);
+            g_object_set_data (G_OBJECT(item), "itemdata", wdata);
         }
 #if GTK_MAJOR_VERSION == 1 //GTK1: hack
         g_object_set_data (G_OBJECT(item), "w_gtk_combobox", (gpointer)combo);
@@ -629,12 +629,13 @@ void w_gtk_combobox_remove (GtkWidget *combo, int position) // index
     if (GTK_IS_COMBO_BOX(combo))
     {
         GtkTreeModel *model = gtk_combo_box_get_model (GTK_COMBO_BOX(combo));
-        GtkTreePath  *path  = gtk_tree_path_new_from_indices (position, -1);
+        ///GtkTreePath  *path  = gtk_tree_path_new_from_indices (position, -1);
         GtkTreeIter iter;
-        if (gtk_tree_model_get_iter (model, &iter, path)) {
+        if (gtk_tree_model_iter_nth_child(model, &iter, NULL, position)) {
+        ///if (gtk_tree_model_get_iter (model, &iter, path)) {
             gtk_list_store_remove (GTK_LIST_STORE(model), &iter);
         }
-        gtk_tree_path_free (path);
+        ///gtk_tree_path_free (path);
         return;
     }
 #endif
@@ -665,19 +666,19 @@ void w_gtk_combobox_remove (GtkWidget *combo, int position) // index
 /               w_gtk_combobox_get_item
 /-------------------------------------------------------------*/
 
-void w_gtk_combobox_get_item (GtkWidget *combo, int position, WGtkComboItem *out_comboitem)
+void w_gtk_combobox_get_item (GtkWidget *combo, int position, WGtkSimpleListItem *out_item)
 {
-    // if out_comboitem->text != NULL, it must be freed
-    g_return_if_fail (out_comboitem != NULL);
-    //g_free (out_comboitem->text);
-    memset (out_comboitem, 0, sizeof(*out_comboitem));
-    out_comboitem->index = position;
+    // if out_item->text != NULL, it must be freed
+    g_return_if_fail (out_item != NULL);
+    //g_free (out_item->text);
+    memset (out_item, 0, sizeof(*out_item));
+    out_item->index = position;
 #if GTK_CHECK_VERSION(4,0,0)
     if (GTK_IS_DROP_DOWN(combo)) // TODO: this has not been tested
     {
         GListModel * model = gtk_drop_down_get_model (GTK_DROP_DOWN(combo));
         GtkStringList *sl = GTK_STRING_LIST(model);
-        out_comboitem->text  = g_strdup (gtk_string_list_get_string(sl, sel));
+        out_item->text  = g_strdup (gtk_string_list_get_string(sl, sel));
         return;
     }
 #endif
@@ -691,13 +692,13 @@ void w_gtk_combobox_get_item (GtkWidget *combo, int position, WGtkComboItem *out
             // the W combo created with w_gtk_combobox_new()
             if (gtk_tree_model_get_iter (model, &iter, path)) {
                 gtk_tree_model_get (model, &iter,
-                                    0, &(out_comboitem->text),
-                                    1, &(out_comboitem->data), -1);
+                                    0, &(out_item->text),
+                                    1, &(out_item->data), -1);
             }
         } else { // normal ComboBoxText
             if (gtk_tree_model_get_iter (model, &iter, path)) {
                 gtk_tree_model_get (model, &iter,
-                                    0, &(out_comboitem->text), -1);
+                                    0, &(out_item->text), -1);
             }
         }
         gtk_tree_path_free (path);
@@ -714,8 +715,8 @@ void w_gtk_combobox_get_item (GtkWidget *combo, int position, WGtkComboItem *out
         if (nitem) { // nitem->data = GtkListItem
             list_item = GTK_WIDGET(nitem->data); 
             label_w   = gtk_bin_get_child (GTK_BIN(list_item));
-            out_comboitem->text = g_strdup (gtk_label_get_text (GTK_LABEL(label_w)));
-            out_comboitem->data = g_object_get_data (G_OBJECT(list_item), "wdata");
+            out_item->text = g_strdup (gtk_label_get_text (GTK_LABEL(label_w)));
+            out_item->data = g_object_get_data (G_OBJECT(list_item), "itemdata");
         }
     }
     else if (GTK_IS_OPTION_MENU(combo))
@@ -725,8 +726,8 @@ void w_gtk_combobox_get_item (GtkWidget *combo, int position, WGtkComboItem *out
         GList *nitem = g_list_nth (items, position);
         if (nitem) // nitem->data = GtkMenuItem
         { // gtk_menu_item_get_label() fails here, broken in gtk1 & gtk2
-            out_comboitem->text = g_strdup (g_object_get_data (G_OBJECT(nitem->data), "wlabel"));
-            out_comboitem->data = g_object_get_data (G_OBJECT(nitem->data), "wdata"); 
+            out_item->text = g_strdup (g_object_get_data (G_OBJECT(nitem->data), "wlabel"));
+            out_item->data = g_object_get_data (G_OBJECT(nitem->data), "itemdata"); 
         }
     }
 #endif
@@ -738,7 +739,7 @@ void w_gtk_combobox_get_item (GtkWidget *combo, int position, WGtkComboItem *out
 
 char *w_gtk_combobox_get_item_text (GtkWidget *combo, int position)
 {
-    WGtkComboItem combo_item;
+    WGtkSimpleListItem combo_item;
     w_gtk_combobox_get_item (combo, position, &combo_item);
     return combo_item.text; //must be freed
 }
@@ -749,7 +750,7 @@ char *w_gtk_combobox_get_item_text (GtkWidget *combo, int position)
 
 char *w_gtk_combobox_get_item_data (GtkWidget *combo, int position)
 {
-    WGtkComboItem combo_item;
+    WGtkSimpleListItem combo_item;
     w_gtk_combobox_get_item (combo, position, &combo_item);
     return combo_item.data;
 }
@@ -759,15 +760,15 @@ char *w_gtk_combobox_get_item_data (GtkWidget *combo, int position)
 /              w_gtk_combobox_get_selected
 /-------------------------------------------------------------*/
 
-int w_gtk_combobox_get_selected (GtkWidget *combo, WGtkComboItem *out_comboitem)
+int w_gtk_combobox_get_selected (GtkWidget *combo, WGtkSimpleListItem *out_item)
 {
     // Returns an integer which is the index of the currently active item
     //   or -1 if there's no active item.
-    // if out_comboitem->text != NULL, it must be freed
+    // if out_item->text != NULL, it must be freed
     int active = -1;
-    if (out_comboitem) {
-        memset (out_comboitem, 0, sizeof(*out_comboitem));
-        out_comboitem->index = -1;
+    if (out_item) {
+        memset (out_item, 0, sizeof(*out_item));
+        out_item->index = -1;
     }
 #if GTK_CHECK_VERSION(4,0,0)
     if (GTK_IS_DROP_DOWN(combo)) //TODO: this has not been tested
@@ -781,9 +782,9 @@ int w_gtk_combobox_get_selected (GtkWidget *combo, WGtkComboItem *out_comboitem)
         } else {
             active = (int) sel;
         }
-        if (out_comboitem && active > -1) {
-            out_comboitem->index = active;
-            out_comboitem->text  = g_strdup (gtk_string_list_get_string(sl, sel));
+        if (out_item && active > -1) {
+            out_item->index = active;
+            out_item->text  = g_strdup (gtk_string_list_get_string(sl, sel));
         }
         return active;
     }
@@ -792,22 +793,22 @@ int w_gtk_combobox_get_selected (GtkWidget *combo, WGtkComboItem *out_comboitem)
     if (GTK_IS_COMBO_BOX(combo))
     {
         active = gtk_combo_box_get_active (GTK_COMBO_BOX(combo));
-        if (out_comboitem && active > -1)
+        if (out_item && active > -1)
         {
-            out_comboitem->index = active;
+            out_item->index = active;
             GtkTreeIter iter;
             GtkTreeModel *model = gtk_combo_box_get_model (GTK_COMBO_BOX(combo));
             if (gtk_tree_model_get_n_columns(model) == 2) {
                 // the W combo created with w_gtk_combobox_new()
                 if (gtk_combo_box_get_active_iter(GTK_COMBO_BOX(combo), &iter)) {
                     gtk_tree_model_get (model, &iter,
-                                        0, &(out_comboitem->text),
-                                        1, &(out_comboitem->data), -1);
+                                        0, &(out_item->text),
+                                        1, &(out_item->data), -1);
                 }
             } else { // normal ComboBoxText
                 if (gtk_combo_box_get_active_iter(GTK_COMBO_BOX(combo), &iter)) {
                     gtk_tree_model_get (model, &iter,
-                                        0, &(out_comboitem->text), -1);
+                                        0, &(out_item->text), -1);
                 }
             }
         }
@@ -822,12 +823,12 @@ int w_gtk_combobox_get_selected (GtkWidget *combo, WGtkComboItem *out_comboitem)
         if (selection) { // selection->data = GtkListItem
             active = g_list_index (GTK_LIST(list)->children, selection->data);
             ///active = gtk_list_child_position (GTK_LIST(list), selection->data);
-            if (out_comboitem && active > -1) {
-                out_comboitem->index = active;
+            if (out_item && active > -1) {
+                out_item->index = active;
                 GtkWidget *list_item = GTK_WIDGET(selection->data);
                 GtkWidget *label_w   = gtk_bin_get_child (GTK_BIN(list_item));
-                out_comboitem->text = g_strdup (gtk_label_get_text (GTK_LABEL(label_w)));
-                out_comboitem->data = g_object_get_data (G_OBJECT(list_item), "wdata"); 
+                out_item->text = g_strdup (gtk_label_get_text (GTK_LABEL(label_w)));
+                out_item->data = g_object_get_data (G_OBJECT(list_item), "itemdata"); 
             }
         }
     }
@@ -838,11 +839,11 @@ int w_gtk_combobox_get_selected (GtkWidget *combo, WGtkComboItem *out_comboitem)
         GtkWidget *menu_item = gtk_menu_get_active (GTK_MENU(menu));
         if (menu_item) { // GtkMenuItem
             active = g_list_index (GTK_MENU_SHELL(menu)->children, menu_item);
-            if (out_comboitem && active > -1) {
-                out_comboitem->index = active;
-                out_comboitem->data = g_object_get_data (G_OBJECT(menu_item), "wdata"); 
+            if (out_item && active > -1) {
+                out_item->index = active;
+                out_item->data = g_object_get_data (G_OBJECT(menu_item), "itemdata"); 
                 // gtk_menu_item_get_label() fails here, broken in gtk1 & gtk2
-                out_comboitem->text = g_strdup (g_object_get_data (G_OBJECT(menu_item), "wlabel")); 
+                out_item->text = g_strdup (g_object_get_data (G_OBJECT(menu_item), "wlabel")); 
             }
         }
     }
@@ -860,7 +861,7 @@ char *w_gtk_combobox_get_active_text (GtkWidget *combo)
     // if returned string != NULL, is must be freed
     char *itext = NULL;
     const char *entry_text = w_gtk_combobox_get_entry_text (combo);
-    WGtkComboItem combo_item;
+    WGtkSimpleListItem combo_item;
     if (entry_text)
     { // for GtkCombo and GtkComboBox with entry, this ends here
         itext = g_strdup (entry_text);
@@ -1022,7 +1023,7 @@ int w_gtk_combobox_search_text (GtkWidget *combo, const char *str,
             if (strcmp_func (value, str) == 0)
             { // found
                 if (out_data) {
-                    *out_data = g_object_get_data (G_OBJECT(list_item), "wdata");
+                    *out_data = g_object_get_data (G_OBJECT(list_item), "itemdata");
                 }
                 if (select) {
                     gtk_list_select_child (GTK_LIST(list), list_item);
@@ -1046,7 +1047,7 @@ int w_gtk_combobox_search_text (GtkWidget *combo, const char *str,
             if (value && strcmp_func(value, str) == 0)
             { // found
                 if (out_data) {
-                    *out_data = g_object_get_data (G_OBJECT(menu_item), "wdata");
+                    *out_data = g_object_get_data (G_OBJECT(menu_item), "itemdata");
                 }
                 if (select) {
                     gtk_option_menu_set_history (GTK_OPTION_MENU(combo), index);
@@ -1110,7 +1111,7 @@ int w_gtk_combobox_search_data (GtkWidget *combo, gpointer wdata, gboolean selec
         for (igl = items; igl != NULL; igl = igl->next)
         {
             index++; // igl->data = GtkListItem
-            value = g_object_get_data (G_OBJECT(igl->data), "wdata");
+            value = g_object_get_data (G_OBJECT(igl->data), "itemdata");
             if (value == wdata) { // found
                 if (select) {
                     gtk_list_item_select (GTK_LIST_ITEM(G_OBJECT(igl->data)));
@@ -1128,7 +1129,7 @@ int w_gtk_combobox_search_data (GtkWidget *combo, gpointer wdata, gboolean selec
         for (igl = items; igl != NULL; igl = igl->next)
         {
             index++; // igl->data = GtkMenuItem
-            value = g_object_get_data (G_OBJECT(igl->data), "wdata");
+            value = g_object_get_data (G_OBJECT(igl->data), "itemdata");
             if (value == wdata) { // found
                 if (select) {
                     gtk_option_menu_set_history (GTK_OPTION_MENU(combo), index);
