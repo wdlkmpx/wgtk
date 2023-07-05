@@ -17,15 +17,10 @@ PROJECT_LIBS=''
 # supported values: C, C++ ("" = C++)
 PROJECT_TYPE=C
 
-# Files.in, to replace @VERSION@ and a few other variables
-#  see w_conf/00_standard_infile.sh for a complete list
-#w_infiles='lib/libmp3.pc'
-
-# config.h: custom extra lines
-w_config_h_extra_lines=""
-
-# config.mk: custom extra lines
-w_config_mk_extra_lines=""
+# Makefile
+MK_SUBDIRS='0libwgtk c-examples'
+MK_DISTCLEAN_FILES=''
+MK_CHECK=''
 
 
 # configure the project using the commands provided
@@ -35,15 +30,22 @@ w_main_func()
 	# GCC=yes if gcc has been detected
 
 	# if the Makefiles are only compatible with GNU make, use w_require_gnu_make
-	#w_prefer_gnu_make
+	w_require_gnu_make
 
 	# check required headers and exit on error
 	w_check_headers_required stdio.h
 }
 
+# function to run after performing all checks
+w_aftercheck_func()
+{
+	printf ""
+}
+
+# function to run once everything is done, probably add stuff to config.h and config.mk
 w_finish_func()
 {
-    printf ""
+	printf ""
 }
 
 #=====================================================================

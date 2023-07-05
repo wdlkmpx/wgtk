@@ -1,10 +1,4 @@
 
-SUBDIRS = 0libwgtk c-examples
-
-DISTCLEAN_FILES = 
-
-# ===========================================================
-
 include config.mk
 
 DISTCLEAN_FILES += config.h config.mk config.log config.sh
@@ -62,13 +56,14 @@ uninstall:
 	done
 
 check:
+	$(MK_CHECK)
 
 distcheck:
 
 installcheck:
 
 dist:
-	sh configure release dist
+	sh configure release
 
 .PHONY: subdirs $(SUBDIRS)
 

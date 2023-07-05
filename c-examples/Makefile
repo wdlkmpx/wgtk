@@ -1,6 +1,6 @@
 include ../config.mk
 
-APPS  = w_gtk_combo_example w_gtk_menu_example w_gtk_menu_example2
+APPS  = w_gtk_combo_example w_gtk_menu_example
 #APPS  = w_gtk_combo_example
 
 WGTK = ../0libwgtk
@@ -9,6 +9,10 @@ WGTK_LIBS   = -L../0libwgtk -lwgtk
 
 ifndef GTK_CFLAGS
 $(error GTK_CFLAGS is not defined)
+endif
+
+ifneq (,$(findstring gtk-3.0,$(GTK_CFLAGS)))
+APPS = w_gtk_menu_example2
 endif
 
 LDFLAGS += 
