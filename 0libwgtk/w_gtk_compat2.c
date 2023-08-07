@@ -1,7 +1,7 @@
 /*
  * Public Domain
 
- Extended compatibility for GTK 2.24 (make apps compile with versions older than GTK2.24)
+ Extended compatibility for GTK < 2.24
 
  */
 

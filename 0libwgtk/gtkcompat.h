@@ -7,7 +7,7 @@
 /*
  * gtkcompat.h, GTK2+ compatibility layer
  * 
- * see w_gtk_compat2.h for extended gtk2.24 compatibility (for versions older than 2.24)
+ * see w_gtk_compat2.h for extended compatibility for versions older than 2.24
  * 
  * The older the GTK version, the more compatible functions are "defined"
  * so it's not wise to use the compiled binary in newer distros or something.
@@ -85,6 +85,8 @@ extern "C"
 #if GTK_MINOR_VERSION < 16
 #define gtk_scrolled_window_set_overlay_scrolling(swindow,overlay)
 #define GTK_POLICY_EXTERNAL GTK_POLICY_NEVER
+#define gtk_paned_set_wide_handle(paned,bool)
+#define gtk_paned_get_wide_handle(paned) (FALSE)
 #endif
 
 // GTK < 3.12
@@ -228,7 +230,7 @@ typedef enum /* GtkAlign */
 
 // CAIRO < 1.10
 #ifdef CAIRO_VERSION
-#if CAIRO_VERSION < CAIRO_VERSION_ENCODE(1, 10, 0)
+#if CAIRO_VERSION < CAIRO_VERSION_ENCODE(1,10,0)
 #define cairo_region_t         GdkRegion
 #define cairo_rectangle_int_t  GdkRectangle
 #define cairo_region_create    gdk_region_new
@@ -250,13 +252,38 @@ typedef enum /* GtkAlign */
 #endif
 #endif
 
+//https://github.com/kfoltman/calfbox/commit/fb46a6b22221814365beb813380952f01e39a309
+/*
+#define gdk_region_get_rectangles(r, rects, n_rects)			\
+	do {								\
+		int i;							\
+		*(n_rects) = cairo_region_num_rectangles(r);		\
+		*(rects) = g_new(cairo_rectangle_int_t, *(n_rects));	\
+		for (i = 0; i < *(n_rects); i++)			\
+			cairo_region_get_rectangle ((r), i, &(*(rects))[i]); \
+	} while (0)
+*/
+
 
 // PANGO
 #ifdef PANGO_VERSION
-#ifndef PANGO_WEIGHT_MEDIUM
+
+// PANGO < 1.36.7
+#if PANGO_VERSION < PANGO_VERSION_ENCODE(1,36,7)
+#define PANGO_WEIGHT_SEMILIGHT 350
+#endif
+
+// PANGO < 1.24
+#if PANGO_VERSION < PANGO_VERSION_ENCODE(1,24,0)
+#define PANGO_WEIGHT_THIN   100
+#define PANGO_WEIGHT_BOOK   380
 #define PANGO_WEIGHT_MEDIUM 500
+#define PANGO_WEIGHT_ULTRAHEAVY 1000
 #endif
-#endif
+
+#endif /* PANGO_VERSION */
+
+// ===================================================
 
 
 #ifdef __cplusplus

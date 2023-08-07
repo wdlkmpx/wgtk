@@ -18,6 +18,7 @@ extern "C"
 #define W_GTK 1
 #include "gtkcompat.h"
 #include "w_gtk_compat2.h"
+#include "w_gtk_compat4.h"
 
 struct _WGtkActionEntry 
 {

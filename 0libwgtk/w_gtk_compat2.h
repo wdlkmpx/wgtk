@@ -1,7 +1,7 @@
 /*
  * Public Domain
 
- Extended compatibility for GTK 2.24 (make apps compile with versions older than GTK2.24)
+ Extended compatibility for GTK < 2.24
 
  Don't include this header, include w_gtk.h instead
 
@@ -104,6 +104,7 @@ cairo_surface_t * gdk_window_create_similar_surface (GdkWindow *window,cairo_con
 #define gtk_range_get_slider_size_fixed(range) (GTK_RANGE(range)->slider_size_fixed)
 #define gtk_range_get_min_slider_size(range) (GTK_RANGE(range)->min_slider_size)
 #define gtk_entry_get_text_window(entry) (GTK_ENTRY(entry)->text_area)
+#define gtk_paned_get_handle_window(paned) (GTK_PANED(paned)->handle)
 #endif
 
 
@@ -161,6 +162,7 @@ GtkOrientation gtk_orientable_get_orientation (GtkOrientable  *widget);
 #define gtk_menu_item_set_label(i,label) gtk_label_set_label(GTK_LABEL(GTK_BIN(i)->child), (label) ? label : "")
 #define gtk_menu_item_get_use_underline(i) (gtk_label_get_use_underline (GTK_LABEL(GTK_BIN(i)->child)))
 #define gtk_status_icon_set_tooltip_text gtk_status_icon_set_tooltip
+#define gtk_selection_data_get_selection(sd) ((sd)->selection)
 #endif
 
 
@@ -191,6 +193,13 @@ GtkOrientation gtk_orientable_get_orientation (GtkOrientable  *widget);
 #define gtk_font_selection_dialog_get_ok_button(d)     ((d)->ok_button)
 #define gtk_font_selection_dialog_get_cancel_button(d) ((d)->cancel_button)
 #define gtk_font_selection_dialog_get_apply_button(d)  ((d)->apply_button)
+// -- GtkSelectionData
+#define gtk_selection_data_get_data(sd)      ((sd)->data)
+#define gtk_selection_data_get_data_type(sd) ((sd)->type)
+#define gtk_selection_data_get_display(sd)   ((sd)->display)
+#define gtk_selection_data_get_format(sd)    ((sd)->format)
+#define gtk_selection_data_get_length(sd)    ((sd)->length)
+#define gtk_selection_data_get_target(sd)    ((sd)->target)
 #endif
 
 
@@ -235,6 +244,8 @@ gboolean gtk_widget_get_has_tooltip (GtkWidget *widget);
 #if !GTK_CHECK_VERSION(2, 4, 0)
 #define gtk_window_get_accept_focus(window) (TRUE)
 #define gtk_window_set_accept_focus(window,bool)
+#define gtk_paned_get_child1(p) ((p)->child1)
+#define gtk_paned_get_child2(p) ((p)->child2)
 // GtkComboBox implemented with w_gtk_combobox (GtkWidget)
 // see w_gtk_combobox.c
 #define GtkComboBox      GtkWidget

@@ -18,7 +18,7 @@ PROJECT_LIBS=''
 PROJECT_TYPE=C
 
 # Makefile
-MK_SUBDIRS='0libwgtk c-examples'
+MK_SUBDIRS='0libwgtk examples'
 MK_DISTCLEAN_FILES=''
 MK_CHECK=''
 
@@ -34,6 +34,11 @@ w_main_func()
 
 	# check required headers and exit on error
 	w_check_headers_required stdio.h
+
+	find_customconfig GTK1 gtk-config
+	find_pkgconfig env='GTK2' pc='gtk+-2.0' required='false'
+	find_pkgconfig env='GTK3' pc='gtk+-3.0' required='false'
+	find_pkgconfig env='GTK4' pc='gtk+-4.0' required='false'
 }
 
 # function to run after performing all checks
@@ -47,30 +52,3 @@ w_finish_func()
 {
 	printf ""
 }
-
-#=====================================================================
-# special scripts for optional features and various tasks
-# checks are run after w_main_func
-#
-# - source w_conf/xxx script to support a specific feature
-# - these scripts are meant to be generic, so any project can add them
-# - most of these scripts can handle --enable/--disable cmd options
-#   to make it easier to replace autoconf
-#
-# In most cases, if a feature is enabled, it will be defined in config.h
-#   #define HAVE_ZLIB 1
-# And config.mk
-#   ZLIB_CFLAGS =
-#   ZLIB_LIBS   =
-
-#W_GTK_IS_OPTIONAL=yes
-##--
-#W_GTK_DEFAULT_VERSION=3
-#W_GTK2_MIN_VERSION='2.14'
-#W_GTK3_MIN_VERSION='3.14'
-#W_GTK4_MIN_VERSION=''
-##-- support only 1 version
-#W_GTK_ONLY_VERSION=2
-#W_GTK_MIN_VERSION=2.24
-. w_conf/gtk
-

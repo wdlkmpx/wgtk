@@ -640,18 +640,21 @@ find_customconfig()  # env config1 [config2...]
 	unset fenv WLAST_CONFIG WLAST_LIBS WLAST_CFLAGS
 	fenv="$1"
 	shift
-	printf "Checking for $fenv... "
-	WLAST_CONFIG="$(check_command "$@")"
-	if [ -n "$WLAST_CONFIG" ] ; then
-		echo "yes [$WLAST_CONFIG]"
-		WLAST_CFLAGS="$(${WLAST_CONFIG} --cflags 2>/dev/null)"
-		WLAST_LIBS="$(${WLAST_CONFIG} --libs 2>/dev/null)"
-		set_env_flags "${fenv}" "${WLAST_LIBS}" "${WLAST_CFLAGS}"
-		return 0
-	else
-		echo "no"
-		return -1
-	fi
+	for zzcconfig in "$@"
+	do
+		printf "Checking for [GTK1] $zzcconfig... "
+		WLAST_CONFIG="$(check_command "$zzcconfig")"
+		if [ -n "$WLAST_CONFIG" ] ; then
+			echo "yes"
+			WLAST_CFLAGS="$(${WLAST_CONFIG} --cflags 2>/dev/null)"
+			WLAST_LIBS="$(${WLAST_CONFIG} --libs 2>/dev/null)"
+			set_env_flags "${fenv}" "${WLAST_LIBS}" "${WLAST_CFLAGS}"
+			return 0
+		else
+			echo "no"
+		fi
+	done
+	return -1
 }
 
 find_lib() 

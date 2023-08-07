@@ -30,7 +30,6 @@ void w_gtk_check_version (int gtk_ver)
     }
 }
 
-
 void w_gtk_widget_change_tooltip (GtkWidget *widget, const char *new_text)
 { /* changes widget tooltip only if the new_text is different */
     char *tip;
@@ -40,6 +39,8 @@ void w_gtk_widget_change_tooltip (GtkWidget *widget, const char *new_text)
     }
     g_free (tip);
 }
+
+// =====================================================================
 
 
 GtkWidget *w_gtk_widget_set_scrolled_window (GtkWidget *widget,
@@ -62,29 +63,7 @@ GtkWidget *w_gtk_widget_set_scrolled_window (GtkWidget *widget,
     }
     g_object_set_data (G_OBJECT(widget), "w_scrolled_window", scrollwin);
 
-#if GTK_CHECK_VERSION(4,0,0)
-    // GTK4 removed GtkContainer
     gtk_scrolled_window_set_child (GTK_SCROLLED_WINDOW(scrollwin), widget);
-#elif GTK_CHECK_VERSION(3,8,0)
-    // 3.8+: gtk_container_add() automatically adds a GtkViewPort
-    // if the child doesn't implement GtkScrollable
-    gtk_container_add (GTK_CONTAINER(scrollwin), widget);
-#elif GTK_CHECK_VERSION(3,0,0)
-    // 3.0+: GtkScrollable is an interface that is implemented by widgets with native scrolling
-    if (GTK_IS_SCROLLABLE(widget)) {
-        gtk_container_add (GTK_CONTAINER(scrollwin), widget);
-    } else {
-        gtk_scrolled_window_add_with_viewport (GTK_SCROLLED_WINDOW(scrollwin), widget);
-    }
-#else // GTK2 & 1
-    GtkWidgetClass *widget_class;
-    widget_class = GTK_WIDGET_GET_CLASS(widget);
-    if (widget_class->set_scroll_adjustments_signal) {
-        gtk_container_add (GTK_CONTAINER(scrollwin), widget);
-    } else {
-        gtk_scrolled_window_add_with_viewport (GTK_SCROLLED_WINDOW(scrollwin), widget);
-    }
-#endif
     return scrollwin;
 }
 
@@ -309,7 +288,7 @@ void w_gtk_image_set_from_icon_name (GtkImage *img, const char *icon_name, GtkIc
 void w_gtk_button_set_icon_name (GtkButton *button, const char *icon_name)
 {
 #if GTK_CHECK_VERSION(2,0,0) // GTK1 doesn't support pixbufs
-    GtkWidget *img;
+    GtkWidget *img = NULL;
     img = w_gtk_image_new_from_icon_name (icon_name, GTK_ICON_SIZE_BUTTON);
     gtk_button_set_image (button, img);
 #endif
